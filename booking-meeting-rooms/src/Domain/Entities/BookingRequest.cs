@@ -1,11 +1,14 @@
 using BookingMeetingRooms.Domain.Common;
 using BookingMeetingRooms.Domain.ValueObjects;
 using BookingMeetingRooms.Domain.Enums;
+using BookingMeetingRooms.Domain.Events;
 
 namespace BookingMeetingRooms.Domain.Entities;
 
 public class BookingRequest : Entity
 {
+    private readonly List<DomainEvent> _domainEvents = new();
+
     public Guid RoomId { get; private set; }
     public Room Room { get; private set; } = null!;
     
@@ -22,6 +25,13 @@ public class BookingRequest : Entity
     public byte[] RowVersion { get; private set; } = Array.Empty<byte>();
     
     public List<BookingStatusTransition> StatusTransitions { get; private set; } = new();
+
+    public IReadOnlyCollection<DomainEvent> DomainEvents => _domainEvents.AsReadOnly();
+
+    public void ClearDomainEvents()
+    {
+        _domainEvents.Clear();
+    }
 
     private BookingRequest() { }
 
@@ -58,8 +68,23 @@ public class BookingRequest : Entity
         if (!Room.IsActive)
             throw new InvalidOperationException("Cannot submit booking request for inactive room");
 
+        if (ParticipantEmails.Count == 0)
+            throw new InvalidOperationException("Cannot submit booking request without participants");
+
+        if (string.IsNullOrWhiteSpace(Description))
+            throw new InvalidOperationException("Cannot submit booking request without description");
+
         Status = BookingStatus.Submitted;
         UpdatedAt = DateTime.UtcNow;
+
+        AddStatusTransition(BookingStatus.Draft, BookingStatus.Submitted, CreatedByUserId, null);
+
+        _domainEvents.Add(new BookingSubmittedEvent(
+            Id,
+            RoomId,
+            TimeSlot.StartAt,
+            TimeSlot.EndAt,
+            new List<string>(ParticipantEmails)));
     }
 
     public void Confirm(Guid confirmedByUserId)
@@ -71,6 +96,13 @@ public class BookingRequest : Entity
         UpdatedAt = DateTime.UtcNow;
         
         AddStatusTransition(BookingStatus.Submitted, BookingStatus.Confirmed, confirmedByUserId, null);
+
+        _domainEvents.Add(new BookingConfirmedEvent(
+            Id,
+            RoomId,
+            TimeSlot.StartAt,
+            TimeSlot.EndAt,
+            confirmedByUserId));
     }
 
     public void Decline(Guid declinedByUserId, string reason)
@@ -85,6 +117,12 @@ public class BookingRequest : Entity
         UpdatedAt = DateTime.UtcNow;
         
         AddStatusTransition(BookingStatus.Submitted, BookingStatus.Declined, declinedByUserId, reason);
+
+        _domainEvents.Add(new BookingDeclinedEvent(
+            Id,
+            RoomId,
+            declinedByUserId,
+            reason));
     }
 
     public void Cancel(Guid cancelledByUserId, string reason)
@@ -99,6 +137,33 @@ public class BookingRequest : Entity
         UpdatedAt = DateTime.UtcNow;
         
         AddStatusTransition(BookingStatus.Confirmed, BookingStatus.Cancelled, cancelledByUserId, reason);
+
+        _domainEvents.Add(new BookingCancelledEvent(
+            Id,
+            RoomId,
+            cancelledByUserId,
+            reason));
+    }
+
+    public bool CanTransitionTo(BookingStatus targetStatus)
+    {
+        return Status switch
+        {
+            BookingStatus.Draft => targetStatus == BookingStatus.Submitted,
+            BookingStatus.Submitted => targetStatus == BookingStatus.Confirmed || targetStatus == BookingStatus.Declined,
+            BookingStatus.Confirmed => targetStatus == BookingStatus.Cancelled,
+            BookingStatus.Declined => false,
+            BookingStatus.Cancelled => false,
+            _ => false
+        };
+    }
+
+    public bool CanBeSubmitted()
+    {
+        return Status == BookingStatus.Draft
+            && Room.IsActive
+            && ParticipantEmails.Count > 0
+            && !string.IsNullOrWhiteSpace(Description);
     }
 
     private void AddStatusTransition(

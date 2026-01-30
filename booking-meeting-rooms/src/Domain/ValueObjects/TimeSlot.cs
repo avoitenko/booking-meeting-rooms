@@ -24,7 +24,22 @@ public class TimeSlot : ValueObject
 
     public bool OverlapsWith(TimeSlot other)
     {
+        if (other == null)
+            return false;
+
         return StartAt < other.EndAt && EndAt > other.StartAt;
+    }
+
+    public TimeSpan Duration => EndAt - StartAt;
+
+    public bool IsInFuture()
+    {
+        return StartAt > DateTime.UtcNow;
+    }
+
+    public bool IsInPast()
+    {
+        return EndAt < DateTime.UtcNow;
     }
 
     protected override IEnumerable<object?> GetEqualityComponents()
