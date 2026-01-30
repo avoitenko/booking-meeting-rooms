@@ -18,9 +18,6 @@ public class AppDbContext : DbContext, IApplicationDbContext
     {
         base.OnModelCreating(modelBuilder);
         
-        // Виключаємо DomainEvent з моделі (це базовий клас для подій, не entity)
-        modelBuilder.Ignore<Domain.Common.DomainEvent>();
-        
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
     }
 }

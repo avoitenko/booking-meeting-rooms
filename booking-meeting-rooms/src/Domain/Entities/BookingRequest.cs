@@ -1,14 +1,11 @@
 using BookingMeetingRooms.Domain.Common;
 using BookingMeetingRooms.Domain.ValueObjects;
 using BookingMeetingRooms.Domain.Enums;
-using BookingMeetingRooms.Domain.Events;
 
 namespace BookingMeetingRooms.Domain.Entities;
 
 public class BookingRequest : Entity
 {
-    private readonly List<DomainEvent> _domainEvents = new();
-
     public Guid RoomId { get; private set; }
     public Room Room { get; private set; } = null!;
     
@@ -25,13 +22,6 @@ public class BookingRequest : Entity
     public byte[] RowVersion { get; private set; } = Array.Empty<byte>();
     
     public List<BookingStatusTransition> StatusTransitions { get; private set; } = new();
-
-    public IReadOnlyCollection<DomainEvent> DomainEvents => _domainEvents.AsReadOnly();
-
-    public void ClearDomainEvents()
-    {
-        _domainEvents.Clear();
-    }
 
     private BookingRequest() { }
 
@@ -78,13 +68,6 @@ public class BookingRequest : Entity
         UpdatedAt = DateTime.UtcNow;
 
         AddStatusTransition(BookingStatus.Draft, BookingStatus.Submitted, CreatedByUserId, null);
-
-        _domainEvents.Add(new BookingSubmittedEvent(
-            Id,
-            RoomId,
-            TimeSlot.StartAt,
-            TimeSlot.EndAt,
-            new List<string>(ParticipantEmails)));
     }
 
     public void Confirm(Guid confirmedByUserId)
@@ -96,13 +79,6 @@ public class BookingRequest : Entity
         UpdatedAt = DateTime.UtcNow;
         
         AddStatusTransition(BookingStatus.Submitted, BookingStatus.Confirmed, confirmedByUserId, null);
-
-        _domainEvents.Add(new BookingConfirmedEvent(
-            Id,
-            RoomId,
-            TimeSlot.StartAt,
-            TimeSlot.EndAt,
-            confirmedByUserId));
     }
 
     public void Decline(Guid declinedByUserId, string reason)
@@ -117,12 +93,6 @@ public class BookingRequest : Entity
         UpdatedAt = DateTime.UtcNow;
         
         AddStatusTransition(BookingStatus.Submitted, BookingStatus.Declined, declinedByUserId, reason);
-
-        _domainEvents.Add(new BookingDeclinedEvent(
-            Id,
-            RoomId,
-            declinedByUserId,
-            reason));
     }
 
     public void Cancel(Guid cancelledByUserId, string reason)
@@ -137,12 +107,6 @@ public class BookingRequest : Entity
         UpdatedAt = DateTime.UtcNow;
         
         AddStatusTransition(BookingStatus.Confirmed, BookingStatus.Cancelled, cancelledByUserId, reason);
-
-        _domainEvents.Add(new BookingCancelledEvent(
-            Id,
-            RoomId,
-            cancelledByUserId,
-            reason));
     }
 
     public bool CanTransitionTo(BookingStatus targetStatus)

@@ -3,12 +3,12 @@ using BookingMeetingRooms.Application.Features.Bookings.Dtos;
 
 namespace BookingMeetingRooms.Application.Features.Bookings.Validators;
 
-public class CancelBookingDtoValidator : AbstractValidator<CancelBookingDto>
+public class ReasonDtoValidator : AbstractValidator<ReasonDto>
 {
-    public CancelBookingDtoValidator()
+    public ReasonDtoValidator()
     {
         RuleFor(x => x.Reason)
-            .NotEmpty().WithMessage("Reason is required for cancellation")
+            .NotEmpty().WithMessage("Reason is required")
             .MaximumLength(500).WithMessage("Reason must not exceed 500 characters");
     }
 }

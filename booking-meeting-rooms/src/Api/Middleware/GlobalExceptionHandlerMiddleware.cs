@@ -39,18 +39,6 @@ public class GlobalExceptionHandlerMiddleware
 
         switch (exception)
         {
-            case InvalidStatusTransitionException statusEx:
-                code = HttpStatusCode.BadRequest;
-                title = "Invalid status transition";
-                detail = $"Cannot transition from {statusEx.CurrentStatus} to {statusEx.TargetStatus}";
-                break;
-
-            case BookingConflictException conflictEx:
-                code = HttpStatusCode.Conflict;
-                title = "Booking conflict";
-                detail = conflictEx.Message;
-                break;
-
             case DomainException domainEx:
                 code = HttpStatusCode.BadRequest;
                 title = "Domain validation error";

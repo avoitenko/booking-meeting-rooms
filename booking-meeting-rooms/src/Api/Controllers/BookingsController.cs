@@ -223,7 +223,7 @@ public class BookingsController : ControllerBase
     [Authorize(Roles = "Admin")]
     public async Task<ActionResult<BookingRequestDto>> DeclineBooking(
         Guid id,
-        [FromBody] DeclineBookingDto dto,
+        [FromBody] ReasonDto dto,
         CancellationToken cancellationToken)
     {
         try
@@ -275,7 +275,7 @@ public class BookingsController : ControllerBase
     [Authorize]
     public async Task<ActionResult<BookingRequestDto>> CancelBooking(
         Guid id,
-        [FromBody] CancelBookingDto dto,
+        [FromBody] ReasonDto dto,
         CancellationToken cancellationToken)
     {
         try

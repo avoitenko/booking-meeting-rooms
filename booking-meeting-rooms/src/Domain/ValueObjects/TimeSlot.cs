@@ -30,18 +30,6 @@ public class TimeSlot : ValueObject
         return StartAt < other.EndAt && EndAt > other.StartAt;
     }
 
-    public TimeSpan Duration => EndAt - StartAt;
-
-    public bool IsInFuture()
-    {
-        return StartAt > DateTime.UtcNow;
-    }
-
-    public bool IsInPast()
-    {
-        return EndAt < DateTime.UtcNow;
-    }
-
     protected override IEnumerable<object?> GetEqualityComponents()
     {
         yield return StartAt;
