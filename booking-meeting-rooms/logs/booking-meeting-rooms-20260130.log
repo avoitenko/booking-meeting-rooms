@@ -1,2 +1,0 @@
-2026-01-30 16:02:41.069 +02:00 [WRN] The property 'BookingRequest.ParticipantEmails' is a collection or enumeration type with a value converter but with no value comparer. Set a value comparer to ensure the collection/enumeration elements are compared correctly.
-2026-01-30 16:02:59.982 +02:00 [ERR] An error occurred using the connection to database 'booking_meeting_rooms_dev' on server 'tcp://localhost:5432'.

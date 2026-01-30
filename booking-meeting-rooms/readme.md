@@ -1,96 +1,188 @@
-﻿# Тестове завдання "Бронювання переговорних кімнат"
-## (Meeting Rooms Booking)
+﻿# Booking Meeting Rooms API
 
-## Мета
+API для сервісу бронювання переговорних кімнат в компанії.
 
-Перевірити навички C#/.NET, ASP.NET Core, EF Core, PostgreSQL, Git, ООП/SOLID/Patterns, 
-а також розуміння Clean Architecture / Modular Monolith / Vertical Slice 
-і побудови робочих процесів (workflows).
+## Архітектура
 
-## Опис
+Проект реалізовано з використанням **Clean Architecture** з наступною структурою:
 
-Реалізуйте API для сервісу бронювання переговорних кімнат в компанії. 
-Співробітник створює запит на бронювання, система перевіряє конфлікти, 
-після чого запит проходить процес підтвердження.
+```
+src/
+├── Api/                    # Web API слой (Controllers, Middleware)
+├── Application/            # Application слой (DTOs, Validators, Mappings, Interfaces)
+│   ├── Common/
+│   │   └── Interfaces/    # Інтерфейси для Application слою
+│   └── Features/          # Feature-based організація
+│       ├── Rooms/         # Rooms feature (DTOs, Validators, Mappings)
+│       └── Bookings/      # Bookings feature (DTOs, Validators, Mappings)
+├── Domain/                # Domain слой (Entities, Value Objects, Domain Events, Specifications)
+│   ├── Common/           # Базові класи (Entity, ValueObject, DomainEvent)
+│   ├── Entities/         # Доменні сутності (Room, BookingRequest, BookingStatusTransition)
+│   ├── ValueObjects/     # Value Objects (TimeSlot, Email)
+│   ├── Enums/            # Перерахування (BookingStatus)
+│   ├── Events/           # Domain Events
+│   ├── Exceptions/       # Доменні винятки
+│   └── Specifications/  # Specifications для бізнес-логіки
+└── Infrastructure/       # Infrastructure слой (EF Core, Services, Middleware)
+    ├── Data/            # DbContext, Configurations, Settings
+    ├── Services/        # Infrastructure сервіси (BookingConflictChecker, TimeSlotValidator)
+    └── Middleware/      # Middleware (Authentication, Exception Handling)
+```
 
-## Функціональні вимоги
+### Принципи архітектури:
 
-### 1. Довідники
+- **Domain-Driven Design**: Вся бізнес-логіка та правила переходів станів знаходяться в Domain шарі
+- **Dependency Inversion**: Application та Infrastructure залежать від Domain через інтерфейси
+- **Separation of Concerns**: Кожен шар має чітко визначені відповідальності
+- **SOLID принципи**: Використання інтерфейсів, dependency injection, single responsibility
 
-- **Room**: назва, місткість, локація, активна/неактивна.
-- **TimeSlot** визначається `startAt`, `endAt` (UTC).
-- **Валідації**: `endAt > startAt`, тривалість не більше N годин (наприклад, 4).
+### Патерни:
 
-### 2. BookingRequest
+- **State Pattern**: Реалізовано через методи переходів станів у `BookingRequest`
+- **Domain Events**: Події для всіх переходів станів (`BookingSubmittedEvent`, `BookingConfirmedEvent`, тощо)
+- **Specification Pattern**: `BookingConflictSpecification` для перевірки конфліктів
+- **Value Objects**: `TimeSlot`, `Email` з валідацією та інваріантами
+- **Repository Pattern**: Використання `IApplicationDbContext` як абстракції над EF Core
 
-- Створення запиту на бронювання кімнати на певний слот.
-- Перелік учасників (emails) — мінімум 1.
-- Опис/мета зустрічі (обов'язково).
-- Правила конфліктів: в одній кімнаті не може бути перетинів по часу для підтверджених бронювань 
-- (і/або для запитів в обробці — на ваш вибір, але пояснити в README).
+## Запуск проекту
 
-### 3. Workflow / процес
+### Вимоги
 
-- **Стани**: `Draft → Submitted → Confirmed` або `Declined →` (опційно) `Cancelled`.
-- **Submitted** можливий лише якщо:
-  - кімната активна,
-  - слот валідний,
-  - є учасники,
-  - немає конфлікту.
-- **Confirmed/Declined** можливий лише для `Submitted`.
-- **Cancelled** можливий лише для `Confirmed` (з причиною).
-- Ведіть історію переходів (хто/коли/з якого стану в який + причина).
+- .NET 10.0 SDK
+- PostgreSQL 12+ (або Docker для запуску PostgreSQL)
 
-### 4. Ролі (спрощено)
+### Крок 1: Налаштування бази даних
 
-- **"Employee"**: створює/відправляє/скасовує (свої).
-- **"Admin"**: підтверджує/відхиляє.
-- Реалізацію доступу можна спростити (наприклад, `X-UserId`, `X-Role`), але перевірка прав має бути.
+Створіть базу даних PostgreSQL:
 
-## API (мінімум)
+```sql
+CREATE DATABASE booking_meeting_rooms;
+CREATE DATABASE booking_meeting_rooms_dev;
+```
 
-- `POST /rooms` — створити кімнату (admin)
-- `GET /rooms` — список кімнат (фільтри: локація, місткість, active)
-- `POST /bookings` — створити запит (Draft)
-- `POST /bookings/{id}/submit` — відправити
-- `POST /bookings/{id}/confirm` — підтвердити (admin)
-- `POST /bookings/{id}/decline` — відхилити (admin, причина)
-- `POST /bookings/{id}/cancel` — скасувати (employee, причина)
-- `GET /bookings/{id}` — деталі + історія
-- `GET /bookings?from=...&to=...&roomId=...&status=...` — пошук
+Або використайте Docker:
 
-## Технічні вимоги
+```bash
+docker run --name postgres-booking -e POSTGRES_PASSWORD=postgres -e POSTGRES_USER=postgres -p 5432:5432 -d postgres:15
+```
 
-- .NET 8+ (LTS), ASP.NET Core Web API.
-- EF Core + PostgreSQL, міграції.
-- Архітектура на вибір:
-  - Clean Architecture (API/Application/Domain/Infrastructure),
-  - або Modular Monolith (Rooms module, Bookings module),
-  - або Vertical Slice (feature slices на рівні endpoint'ів/команд).
-- Доменно-орієнтована модель: правила та переходи станів — у домені, не в контролерах.
+### Крок 2: Налаштування конфігурації
 
-## Вимоги до якості (ООП/SOLID/Patterns)
+Оновіть `appsettings.json` або `appsettings.Development.json` з правильними даними підключення:
 
-- Чисті інваріанти й захист від некоректних переходів.
-- Патерни за потреби: State, Domain Events, Policy/Specification.
-- Обробка помилок через коректні HTTP-коди + ProblemDetails.
-- Логування ключових подій.
+```json
+{
+  "ConnectionStrings": {
+    "DefaultConnection": "Host=localhost;Port=5432;Database=booking_meeting_rooms;Username=postgres;Password=postgres"
+  },
+  "BookingSettings": {
+    "MaxTimeSlotHours": 4,
+    "CheckSubmittedForConflicts": false
+  }
+}
+```
 
-## БД та продуктивність
+**Параметри конфігурації:**
+- `MaxTimeSlotHours` - максимальна тривалість бронювання (за замовчуванням 4 години)
+- `CheckSubmittedForConflicts` - чи перевіряти конфлікти з `Submitted` бронюваннями (за замовчуванням `false`, перевіряються тільки `Confirmed`)
 
-- **Конкурентність**: мінімально обґрунтуйте підхід проти "подвійного підтвердження" 
-  при одночасних запитах (optimistic concurrency, транзакція/лок, унікальні обмеження/перевірки).
-- Перевірка перетинів слотів повинна бути ефективною (не тягнути всі бронювання в пам'ять).
+### Крок 3: Застосування міграцій
 
-## Git вимоги
+```bash
+dotnet ef database update
+```
 
-- Репозиторій з історією: 5–10 логічних комітів (feature-by-feature).
-- README з інструкцією запуску та коротким поясненням архітектури.
+Або міграції застосуються автоматично при запуску в Development режимі.
 
-## Результати
+### Крок 4: Запуск додатку
 
-- Репозиторій/архів.
-- **README.md**:
-  - запуск, міграції, конфігурація
-  - коротко: як організована архітектура (модулі/слайси/шари)
-  - приклади API-запитів (curl)
+```bash
+dotnet run
+```
+
+Або через Visual Studio / Rider.
+
+Додаток буде доступний за адресою:
+- HTTP: `http://localhost:5000`
+- HTTPS: `https://localhost:5001`
+- Swagger UI: `https://localhost:5001/swagger`
+
+## Авторизація
+
+API використовує спрощену авторизацію через HTTP заголовки:
+
+- **X-UserId** (обов'язково) - ID користувача (Guid)
+- **X-Role** (опційно) - Роль користувача: `Employee` або `Admin`
+
+**Приклад:**
+```bash
+curl -H "X-UserId: 00000000-0000-0000-0000-000000000001" \
+     -H "X-Role: Admin" \
+     https://localhost:5001/api/rooms
+```
+
+## API Endpoints
+
+### Rooms
+
+- `POST /api/rooms` - Створити кімнату (Admin)
+- `GET /api/rooms` - Список кімнат з фільтрацією
+- `GET /api/rooms/{id}` - Отримати кімнату за ID
+- `PUT /api/rooms/{id}` - Оновити кімнату (Admin)
+- `DELETE /api/rooms/{id}` - Деактивувати кімнату (Admin)
+
+### Bookings
+
+- `POST /api/bookings` - Створити запит на бронювання (Draft)
+- `POST /api/bookings/{id}/submit` - Відправити запит (Draft → Submitted)
+- `POST /api/bookings/{id}/confirm` - Підтвердити бронювання (Admin, Submitted → Confirmed)
+- `POST /api/bookings/{id}/decline` - Відхилити бронювання (Admin, Submitted → Declined)
+- `POST /api/bookings/{id}/cancel` - Скасувати бронювання (Confirmed → Cancelled)
+- `GET /api/bookings/{id}` - Отримати деталі бронювання з історією
+- `GET /api/bookings` - Пошук бронювань з фільтрацією
+
+## Приклади API запитів
+
+Детальні приклади використання API дивіться у файлі [API_EXAMPLES.md](API_EXAMPLES.md).
+
+## Конкурентність та конфлікти
+
+### Підхід до конкурентності:
+
+1. **Optimistic Concurrency**: Використання `RowVersion` (timestamp) у `BookingRequest` для виявлення одночасних змін
+2. **Перевірка конфліктів**: Ефективна перевірка через SQL запити з індексами, без завантаження всіх бронювань в пам'ять
+3. **Транзакції**: Використання транзакцій EF Core для атомарності операцій
+
+### Правила конфліктів:
+
+- За замовчуванням перевіряються тільки `Confirmed` бронювання
+- Можна увімкнути перевірку `Submitted` через параметр `CheckSubmittedForConflicts` в конфігурації
+- Перевірка виконується перед `Submit` та `Confirm` операціями
+
+## Логування
+
+Використовується **Serilog** для логування:
+- Консольний вивід
+- Файли логів у папці `logs/` (ротація щодня)
+- Логування всіх ключових операцій (створення, переходи станів, помилки)
+
+## Технології
+
+- **.NET 10.0** - платформа
+- **ASP.NET Core** - Web API фреймворк
+- **Entity Framework Core 10.0** - ORM
+- **PostgreSQL** - база даних
+- **FluentValidation** - валідація
+- **Serilog** - логування
+- **Swashbuckle (Swagger)** - документація API
+
+## Структура комітів
+
+Проект розвивався поетапно з логічними комітами:
+
+1. Налаштування проекту: структура папок Clean Architecture, базові пакети, DbContext, конфігурація
+2. Domain модель: Room, BookingRequest, Value Objects (TimeSlot), State pattern, Domain Events
+3. EF Core міграції та Infrastructure реалізація (репозиторії, конфігурація)
+4. API для Rooms: CRUD операції з фільтрацією
+5. API для BookingRequest: створення та workflow переходи (Submit, Confirm, Decline, Cancel)
+6. Пошук/фільтрація бронювань, обробка помилок, документація, приклади API

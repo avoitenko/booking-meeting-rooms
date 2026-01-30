@@ -113,6 +113,19 @@ namespace BookingMeetingRooms.Migrations
                 name: "IX_Rooms_Location_IsActive",
                 table: "Rooms",
                 columns: new[] { "Location", "IsActive" });
+
+            // Seed дані - прикладові кімнати
+            migrationBuilder.InsertData(
+                table: "Rooms",
+                columns: new[] { "Id", "Name", "Capacity", "Location", "IsActive", "CreatedAt", "UpdatedAt" },
+                values: new object[,]
+                {
+                    { new Guid("11111111-1111-1111-1111-111111111111"), "Конференц-зал A", 20, "Поверх 1", true, DateTime.UtcNow, null },
+                    { new Guid("22222222-2222-2222-2222-222222222222"), "Конференц-зал B", 15, "Поверх 1", true, DateTime.UtcNow, null },
+                    { new Guid("33333333-3333-3333-3333-333333333333"), "Мала переговорна", 6, "Поверх 2", true, DateTime.UtcNow, null },
+                    { new Guid("44444444-4444-4444-4444-444444444444"), "Велика переговорна", 30, "Поверх 2", true, DateTime.UtcNow, null },
+                    { new Guid("55555555-5555-5555-5555-555555555555"), "Кімната для переговорів", 10, "Поверх 3", true, DateTime.UtcNow, null }
+                });
         }
 
         /// <inheritdoc />

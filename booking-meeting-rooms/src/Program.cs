@@ -21,7 +21,7 @@ public class Program
             .Enrich.FromLogContext()
             .Enrich.WithThreadId()
             .WriteTo.Console()
-            .WriteTo.File("logs/booking-meeting-rooms-.log", rollingInterval: RollingInterval.Day)
+            .WriteTo.File("logs/{Date}.log", rollingInterval: RollingInterval.Day, outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Message:lj}{NewLine}{Exception}")
             .CreateLogger();
 
         builder.Host.UseSerilog();
@@ -32,6 +32,9 @@ public class Program
         builder.Services.AddSwaggerGen(c =>
         {
             c.EnableAnnotations();
+            
+            // Додаємо можливість вводити кастомні заголовки в Swagger UI через параметри
+            c.OperationFilter<Api.Filters.SwaggerHeaderOperationFilter>();
         });
 
         // FluentValidation
@@ -73,11 +76,12 @@ public class Program
         var app = builder.Build();
 
         // Налаштування HTTP pipeline
-        if (app.Environment.IsDevelopment())
+        app.UseSwagger();
+        app.UseSwaggerUI(c =>
         {
-            app.UseSwagger();
-            app.UseSwaggerUI();
-        }
+            c.SwaggerEndpoint("/swagger/v1/swagger.json", "Booking Meeting Rooms API v1");
+            c.RoutePrefix = string.Empty; // Swagger UI буде доступний на кореневому шляху
+        });
 
         app.UseSerilogRequestLogging();
         app.UseHttpsRedirection();
@@ -87,7 +91,7 @@ public class Program
         app.UseGlobalExceptionHandler();
         app.MapControllers();
 
-        // Застосування міграцій при старті (тільки в Development)
+        // Застосування міграцій та seed даних при старті (тільки в Development)
         if (app.Environment.IsDevelopment())
         {
             using (var scope = app.Services.CreateScope())
@@ -97,10 +101,27 @@ public class Program
                 {
                     dbContext.Database.Migrate();
                     Log.Information("Database migrations applied");
+
+                    // Seed дані - створення прикладних кімнат, якщо таблиця порожня
+                    if (!dbContext.Rooms.Any())
+                    {
+                        var rooms = new[]
+                        {
+                            new Domain.Entities.Room("Конференц-зал A", 20, "Поверх 1", true),
+                            new Domain.Entities.Room("Конференц-зал B", 15, "Поверх 1", true),
+                            new Domain.Entities.Room("Мала переговорна", 6, "Поверх 2", true),
+                            new Domain.Entities.Room("Велика переговорна", 30, "Поверх 2", true),
+                            new Domain.Entities.Room("Кімната для переговорів", 10, "Поверх 3", true)
+                        };
+
+                        dbContext.Rooms.AddRange(rooms);
+                        dbContext.SaveChanges();
+                        Log.Information("Seed data: {Count} rooms created", rooms.Length);
+                    }
                 }
                 catch (Exception ex)
                 {
-                    Log.Error(ex, "Failed to apply database migrations");
+                    Log.Error(ex, "Failed to apply database migrations or seed data");
                 }
             }
         }
