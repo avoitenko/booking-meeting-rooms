@@ -5,6 +5,7 @@ using BookingMeetingRooms.Application.Common.Interfaces;
 using BookingMeetingRooms.Infrastructure.Services;
 using FluentValidation;
 using FluentValidation.AspNetCore;
+using BookingMeetingRooms.Api.Middleware;
 
 namespace BookingMeetingRooms;
 
@@ -28,7 +29,10 @@ public class Program
         // Додавання сервісів
         builder.Services.AddControllers();
         builder.Services.AddEndpointsApiExplorer();
-        builder.Services.AddSwaggerGen();
+        builder.Services.AddSwaggerGen(c =>
+        {
+            c.EnableAnnotations();
+        });
 
         // FluentValidation
         builder.Services.AddValidatorsFromAssemblyContaining<Program>();
@@ -80,6 +84,7 @@ public class Program
         app.UseCors();
         app.UseAuthentication();
         app.UseAuthorization();
+        app.UseGlobalExceptionHandler();
         app.MapControllers();
 
         // Застосування міграцій при старті (тільки в Development)

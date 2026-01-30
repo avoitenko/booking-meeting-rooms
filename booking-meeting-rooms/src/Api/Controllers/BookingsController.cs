@@ -7,6 +7,7 @@ using BookingMeetingRooms.Application.Features.Bookings.Mappings;
 using BookingMeetingRooms.Domain.Entities;
 using BookingMeetingRooms.Domain.Exceptions;
 using System.Security.Claims;
+using Swashbuckle.AspNetCore.Annotations;
 
 namespace BookingMeetingRooms.Api.Controllers;
 
@@ -34,8 +35,20 @@ public class BookingsController : ControllerBase
     /// <summary>
     /// Створити запит на бронювання (Draft)
     /// </summary>
+    /// <param name="dto">Дані для створення запиту на бронювання</param>
+    /// <param name="cancellationToken">Токен скасування</param>
+    /// <returns>Створений запит на бронювання</returns>
+    /// <response code="201">Запит успішно створено</response>
+    /// <response code="400">Помилка валідації</response>
+    /// <response code="401">Не авторизовано</response>
+    /// <response code="404">Кімната не знайдена</response>
     [HttpPost]
     [Authorize]
+    [SwaggerOperation(Summary = "Створити запит на бронювання", Description = "Створює новий запит на бронювання кімнати зі статусом Draft. Потрібна авторизація через заголовок X-UserId.")]
+    [SwaggerResponse(201, "Запит успішно створено", typeof(BookingRequestDto))]
+    [SwaggerResponse(400, "Помилка валідації")]
+    [SwaggerResponse(401, "Не авторизовано")]
+    [SwaggerResponse(404, "Кімната не знайдена")]
     public async Task<ActionResult<BookingRequestDto>> CreateBooking(
         [FromBody] CreateBookingRequestDto dto,
         CancellationToken cancellationToken)

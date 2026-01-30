@@ -6,6 +6,7 @@ using BookingMeetingRooms.Application.Features.Rooms.Dtos;
 using BookingMeetingRooms.Application.Features.Rooms.Mappings;
 using BookingMeetingRooms.Domain.Entities;
 using System.Security.Claims;
+using Swashbuckle.AspNetCore.Annotations;
 
 namespace BookingMeetingRooms.Api.Controllers;
 
@@ -27,8 +28,20 @@ public class RoomsController : ControllerBase
     /// <summary>
     /// Створити кімнату (тільки для Admin)
     /// </summary>
+    /// <param name="dto">Дані для створення кімнати</param>
+    /// <param name="cancellationToken">Токен скасування</param>
+    /// <returns>Створена кімната</returns>
+    /// <response code="201">Кімната успішно створена</response>
+    /// <response code="400">Помилка валідації</response>
+    /// <response code="401">Не авторизовано</response>
+    /// <response code="403">Немає прав доступу (потрібна роль Admin)</response>
     [HttpPost]
     [Authorize(Roles = "Admin")]
+    [SwaggerOperation(Summary = "Створити кімнату", Description = "Створює нову переговорну кімнату. Доступно тільки для адміністраторів.")]
+    [SwaggerResponse(201, "Кімната успішно створена", typeof(RoomDto))]
+    [SwaggerResponse(400, "Помилка валідації")]
+    [SwaggerResponse(401, "Не авторизовано")]
+    [SwaggerResponse(403, "Немає прав доступу")]
     public async Task<ActionResult<RoomDto>> CreateRoom([FromBody] CreateRoomDto dto, CancellationToken cancellationToken)
     {
         try
@@ -51,7 +64,13 @@ public class RoomsController : ControllerBase
     /// <summary>
     /// Отримати список кімнат з фільтрацією
     /// </summary>
+    /// <param name="filter">Параметри фільтрації (Location, MinCapacity, IsActive)</param>
+    /// <param name="cancellationToken">Токен скасування</param>
+    /// <returns>Список кімнат</returns>
+    /// <response code="200">Список кімнат успішно отримано</response>
     [HttpGet]
+    [SwaggerOperation(Summary = "Отримати список кімнат", Description = "Повертає список переговорних кімнат з можливістю фільтрації по локації, місткості та статусу активності.")]
+    [SwaggerResponse(200, "Список кімнат", typeof(IEnumerable<RoomDto>))]
     public async Task<ActionResult<IEnumerable<RoomDto>>> GetRooms(
         [FromQuery] RoomFilterDto filter,
         CancellationToken cancellationToken)
