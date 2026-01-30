@@ -2,8 +2,9 @@ using Microsoft.EntityFrameworkCore;
 using Serilog;
 using BookingMeetingRooms.Infrastructure.Data;
 using BookingMeetingRooms.Application.Common.Interfaces;
-using BookingMeetingRooms.Infrastructure.Middleware;
 using BookingMeetingRooms.Infrastructure.Services;
+using FluentValidation;
+using FluentValidation.AspNetCore;
 
 namespace BookingMeetingRooms;
 
@@ -28,6 +29,15 @@ public class Program
         builder.Services.AddControllers();
         builder.Services.AddEndpointsApiExplorer();
         builder.Services.AddSwaggerGen();
+
+        // FluentValidation
+        builder.Services.AddValidatorsFromAssemblyContaining<Program>();
+        builder.Services.AddFluentValidationAutoValidation();
+        builder.Services.AddFluentValidationClientsideAdapters();
+        
+        // Автентифікація (спрощена через headers)
+        builder.Services.AddAuthentication("HeaderAuth")
+            .AddScheme<Microsoft.AspNetCore.Authentication.AuthenticationSchemeOptions, BookingMeetingRooms.Infrastructure.Middleware.HeaderAuthenticationHandler>("HeaderAuth", options => { });
 
         // Налаштування PostgreSQL та EF Core
         var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
@@ -68,7 +78,7 @@ public class Program
         app.UseSerilogRequestLogging();
         app.UseHttpsRedirection();
         app.UseCors();
-        app.UseAuthorizationHeaders();
+        app.UseAuthentication();
         app.UseAuthorization();
         app.MapControllers();
 
