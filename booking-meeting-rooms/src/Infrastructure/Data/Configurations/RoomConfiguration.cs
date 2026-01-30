@@ -30,5 +30,10 @@ public class RoomConfiguration : IEntityTypeConfiguration<Room>
             .IsRequired();
 
         builder.Property(r => r.UpdatedAt);
+
+        // Індекси для пошуку
+        builder.HasIndex(r => r.Location);
+        builder.HasIndex(r => r.IsActive);
+        builder.HasIndex(r => new { r.Location, r.IsActive });
     }
 }

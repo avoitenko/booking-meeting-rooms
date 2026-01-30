@@ -3,6 +3,7 @@ using Serilog;
 using BookingMeetingRooms.Infrastructure.Data;
 using BookingMeetingRooms.Application.Common.Interfaces;
 using BookingMeetingRooms.Infrastructure.Middleware;
+using BookingMeetingRooms.Infrastructure.Services;
 
 namespace BookingMeetingRooms;
 
@@ -40,6 +41,10 @@ public class Program
         builder.Services.Configure<BookingSettings>(
             builder.Configuration.GetSection("BookingSettings"));
 
+        // Реєстрація сервісів
+        builder.Services.AddScoped<IBookingConflictChecker, BookingConflictChecker>();
+        builder.Services.AddScoped<ITimeSlotValidator, TimeSlotValidator>();
+
         // CORS
         builder.Services.AddCors(options =>
         {
@@ -67,18 +72,21 @@ public class Program
         app.UseAuthorization();
         app.MapControllers();
 
-        // Перевірка підключення до БД при старті
-        using (var scope = app.Services.CreateScope())
+        // Застосування міграцій при старті (тільки в Development)
+        if (app.Environment.IsDevelopment())
         {
-            var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-            try
+            using (var scope = app.Services.CreateScope())
             {
-                dbContext.Database.EnsureCreated();
-                Log.Information("Database connection verified");
-            }
-            catch (Exception ex)
-            {
-                Log.Error(ex, "Failed to connect to database");
+                var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+                try
+                {
+                    dbContext.Database.Migrate();
+                    Log.Information("Database migrations applied");
+                }
+                catch (Exception ex)
+                {
+                    Log.Error(ex, "Failed to apply database migrations");
+                }
             }
         }
 

@@ -34,10 +34,19 @@ public class BookingRequestConfiguration : IEntityTypeConfiguration<BookingReque
                 .IsRequired();
         });
 
+        // Індекси для ефективної перевірки конфліктів
+        builder.HasIndex(b => new { b.RoomId, b.Status });
+        builder.HasIndex(b => b.Status);
+        builder.HasIndex(b => b.CreatedByUserId);
+
         builder.Property(b => b.ParticipantEmails)
             .HasConversion(
                 v => string.Join(";", v),
-                v => v.Split(';', StringSplitOptions.RemoveEmptyEntries).ToList())
+                v => v.Split(';', StringSplitOptions.RemoveEmptyEntries).ToList(),
+                new Microsoft.EntityFrameworkCore.ChangeTracking.ValueComparer<List<string>>(
+                    (c1, c2) => c1 != null && c2 != null && c1.SequenceEqual(c2),
+                    c => c.Aggregate(0, (a, v) => HashCode.Combine(a, v.GetHashCode())),
+                    c => c.ToList()))
             .IsRequired();
 
         builder.Property(b => b.Description)
