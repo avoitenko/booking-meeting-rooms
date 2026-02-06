@@ -17,22 +17,24 @@ namespace BookingMeetingRooms.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.0")
+                .HasAnnotation("ProductVersion", "10.0.2")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
             modelBuilder.Entity("BookingMeetingRooms.Domain.Entities.BookingRequest", b =>
                 {
-                    b.Property<Guid>("Id")
+                    b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<Guid>("CreatedByUserId")
-                        .HasColumnType("uuid");
+                    b.Property<int>("CreatedByUserId")
+                        .HasColumnType("integer");
 
                     b.Property<string>("Description")
                         .IsRequired()
@@ -43,8 +45,8 @@ namespace BookingMeetingRooms.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.Property<Guid>("RoomId")
-                        .HasColumnType("uuid");
+                    b.Property<int>("RoomId")
+                        .HasColumnType("integer");
 
                     b.Property<byte[]>("RowVersion")
                         .IsConcurrencyToken()
@@ -72,15 +74,17 @@ namespace BookingMeetingRooms.Migrations
 
             modelBuilder.Entity("BookingMeetingRooms.Domain.Entities.BookingStatusTransition", b =>
                 {
-                    b.Property<Guid>("Id")
+                    b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
+                        .HasColumnType("integer");
 
-                    b.Property<Guid>("BookingRequestId")
-                        .HasColumnType("uuid");
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
-                    b.Property<Guid>("ChangedByUserId")
-                        .HasColumnType("uuid");
+                    b.Property<int>("BookingRequestId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("ChangedByUserId")
+                        .HasColumnType("integer");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
@@ -109,9 +113,11 @@ namespace BookingMeetingRooms.Migrations
 
             modelBuilder.Entity("BookingMeetingRooms.Domain.Entities.Room", b =>
                 {
-                    b.Property<Guid>("Id")
+                    b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<int>("Capacity")
                         .HasColumnType("integer");
@@ -156,8 +162,8 @@ namespace BookingMeetingRooms.Migrations
 
                     b.OwnsOne("BookingMeetingRooms.Domain.ValueObjects.TimeSlot", "TimeSlot", b1 =>
                         {
-                            b1.Property<Guid>("BookingRequestId")
-                                .HasColumnType("uuid");
+                            b1.Property<int>("BookingRequestId")
+                                .HasColumnType("integer");
 
                             b1.Property<DateTime>("EndAt")
                                 .HasColumnType("timestamp with time zone")

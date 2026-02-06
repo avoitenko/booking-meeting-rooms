@@ -5,13 +5,13 @@ namespace BookingMeetingRooms.Domain.Entities;
 
 public class BookingStatusTransition : Entity
 {
-    public Guid BookingRequestId { get; private set; }
+    public int BookingRequestId { get; private set; }
     public BookingRequest BookingRequest { get; private set; } = null!;
     
     public BookingStatus FromStatus { get; private set; }
     public BookingStatus ToStatus { get; private set; }
     
-    public Guid ChangedByUserId { get; private set; }
+    public int ChangedByUserId { get; private set; }
     
     public string? Reason { get; private set; }
 
@@ -21,7 +21,7 @@ public class BookingStatusTransition : Entity
         BookingRequest bookingRequest,
         BookingStatus fromStatus,
         BookingStatus toStatus,
-        Guid changedByUserId,
+        int changedByUserId,
         string? reason = null)
     {
         if (bookingRequest == null)

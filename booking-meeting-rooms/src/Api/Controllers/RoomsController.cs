@@ -44,6 +44,11 @@ public class RoomsController : ControllerBase
     [SwaggerResponse(403, "Немає прав доступу")]
     public async Task<ActionResult<RoomDto>> CreateRoom([FromBody] CreateRoomDto dto, CancellationToken cancellationToken)
     {
+        if (!ModelState.IsValid)
+        {
+            return BadRequest(ModelState);
+        }
+
         try
         {
             var room = dto.ToEntity();
@@ -112,7 +117,7 @@ public class RoomsController : ControllerBase
     /// Отримати кімнату за ID
     /// </summary>
     [HttpGet("{id}")]
-    public async Task<ActionResult<RoomDto>> GetRoom(Guid id, CancellationToken cancellationToken)
+    public async Task<ActionResult<RoomDto>> GetRoom(int id, CancellationToken cancellationToken)
     {
         try
         {
@@ -138,10 +143,15 @@ public class RoomsController : ControllerBase
     [HttpPut("{id}")]
     [Authorize(Roles = "Admin")]
     public async Task<ActionResult<RoomDto>> UpdateRoom(
-        Guid id,
+        int id,
         [FromBody] UpdateRoomDto dto,
         CancellationToken cancellationToken)
     {
+        if (!ModelState.IsValid)
+        {
+            return BadRequest(ModelState);
+        }
+
         try
         {
             var room = await _context.Rooms.FindAsync(new object[] { id }, cancellationToken);
@@ -175,7 +185,7 @@ public class RoomsController : ControllerBase
     /// </summary>
     [HttpDelete("{id}")]
     [Authorize(Roles = "Admin")]
-    public async Task<IActionResult> DeleteRoom(Guid id, CancellationToken cancellationToken)
+    public async Task<IActionResult> DeleteRoom(int id, CancellationToken cancellationToken)
     {
         try
         {
@@ -200,9 +210,9 @@ public class RoomsController : ControllerBase
         }
     }
 
-    private Guid? GetCurrentUserId()
+    private int? GetCurrentUserId()
     {
         var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        return userIdClaim != null && Guid.TryParse(userIdClaim, out var userId) ? userId : null;
+        return userIdClaim != null && int.TryParse(userIdClaim, out var userId) ? userId : null;
     }
 }

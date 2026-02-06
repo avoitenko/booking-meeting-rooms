@@ -22,7 +22,7 @@ public class BookingConflictChecker : IBookingConflictChecker
 
     public async Task<bool> HasConflictAsync(
         BookingRequest bookingRequest,
-        Guid? excludeBookingId = null,
+        int? excludeBookingId = null,
         CancellationToken cancellationToken = default)
     {
         var conflictingStatuses = new List<BookingStatus> { BookingStatus.Confirmed };

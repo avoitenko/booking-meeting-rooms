@@ -6,7 +6,7 @@ namespace BookingMeetingRooms.Domain.Entities;
 
 public class BookingRequest : Entity
 {
-    public Guid RoomId { get; private set; }
+    public int RoomId { get; private set; }
     public Room Room { get; private set; } = null!;
     
     public TimeSlot TimeSlot { get; private set; } = null!;
@@ -17,7 +17,7 @@ public class BookingRequest : Entity
     
     public BookingStatus Status { get; private set; } = BookingStatus.Draft;
     
-    public Guid CreatedByUserId { get; private set; }
+    public int CreatedByUserId { get; private set; }
     
     public byte[] RowVersion { get; private set; } = Array.Empty<byte>();
     
@@ -30,7 +30,7 @@ public class BookingRequest : Entity
         TimeSlot timeSlot,
         List<string> participantEmails,
         string description,
-        Guid createdByUserId)
+        int createdByUserId)
     {
         if (room == null)
             throw new ArgumentNullException(nameof(room));
@@ -70,7 +70,7 @@ public class BookingRequest : Entity
         AddStatusTransition(BookingStatus.Draft, BookingStatus.Submitted, CreatedByUserId, null);
     }
 
-    public void Confirm(Guid confirmedByUserId)
+    public void Confirm(int confirmedByUserId)
     {
         if (Status != BookingStatus.Submitted)
             throw new InvalidOperationException($"Cannot confirm booking request in {Status} status");
@@ -81,7 +81,7 @@ public class BookingRequest : Entity
         AddStatusTransition(BookingStatus.Submitted, BookingStatus.Confirmed, confirmedByUserId, null);
     }
 
-    public void Decline(Guid declinedByUserId, string reason)
+    public void Decline(int declinedByUserId, string reason)
     {
         if (Status != BookingStatus.Submitted)
             throw new InvalidOperationException($"Cannot decline booking request in {Status} status");
@@ -95,7 +95,7 @@ public class BookingRequest : Entity
         AddStatusTransition(BookingStatus.Submitted, BookingStatus.Declined, declinedByUserId, reason);
     }
 
-    public void Cancel(Guid cancelledByUserId, string reason)
+    public void Cancel(int cancelledByUserId, string reason)
     {
         if (Status != BookingStatus.Confirmed)
             throw new InvalidOperationException($"Cannot cancel booking request in {Status} status");
@@ -133,7 +133,7 @@ public class BookingRequest : Entity
     private void AddStatusTransition(
         BookingStatus fromStatus,
         BookingStatus toStatus,
-        Guid changedByUserId,
+        int changedByUserId,
         string? reason)
     {
         var transition = new BookingStatusTransition(

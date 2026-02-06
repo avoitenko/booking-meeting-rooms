@@ -1,0 +1,462 @@
+{
+	"info": {
+		"_postman_id": "booking-meeting-rooms-api",
+		"name": "Booking Meeting Rooms API",
+		"description": "API для управления бронированием переговорных комнат",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Rooms",
+			"item": [
+				{
+					"name": "Get All Rooms",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/rooms",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"rooms"
+							],
+							"query": [
+								{
+									"key": "Location",
+									"value": "",
+									"description": "Фильтр по локации",
+									"disabled": true
+								},
+								{
+									"key": "MinCapacity",
+									"value": "",
+									"description": "Минимальная вместимость",
+									"disabled": true
+								},
+								{
+									"key": "IsActive",
+									"value": "true",
+									"description": "Только активные комнаты",
+									"disabled": true
+								}
+							]
+						},
+						"description": "Получить список всех комнат с возможностью фильтрации"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Room by ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/rooms/1",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"rooms",
+								"1"
+							]
+						},
+						"description": "Получить комнату по ID"
+					},
+					"response": []
+				},
+				{
+					"name": "Create Room",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "X-UserId",
+								"value": "1",
+								"description": "ID пользователя (обязательно)"
+							},
+							{
+								"key": "X-Role",
+								"value": "Admin",
+								"description": "Роль пользователя (Admin для создания комнат)"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Конференц-зал C\",\n  \"capacity\": 25,\n  \"location\": \"Поверх 2\",\n  \"isActive\": true\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/rooms",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"rooms"
+							]
+						},
+						"description": "Создать новую комнату (только для Admin)"
+					},
+					"response": []
+				},
+				{
+					"name": "Update Room",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "X-UserId",
+								"value": "1"
+							},
+							{
+								"key": "X-Role",
+								"value": "Admin"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Конференц-зал C (обновлено)\",\n  \"capacity\": 30,\n  \"location\": \"Поверх 3\",\n  \"isActive\": true\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/rooms/1",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"rooms",
+								"1"
+							]
+						},
+						"description": "Обновить комнату (только для Admin)"
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Room",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "X-UserId",
+								"value": "1"
+							},
+							{
+								"key": "X-Role",
+								"value": "Admin"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/rooms/1",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"rooms",
+								"1"
+							]
+						},
+						"description": "Деактивировать комнату (только для Admin)"
+					},
+					"response": []
+				}
+			],
+			"description": "Эндпоинты для управления переговорными комнатами"
+		},
+		{
+			"name": "Bookings",
+			"item": [
+				{
+					"name": "Get All Bookings",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "X-UserId",
+								"value": "1"
+							},
+							{
+								"key": "X-Role",
+								"value": "Admin",
+								"description": "Admin видит все бронирования, Employee - только свои"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/bookings?from=2026-01-01T00:00:00Z&to=2026-12-31T23:59:59Z&roomId=1&status=2",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"bookings"
+							],
+							"query": [
+								{
+									"key": "from",
+									"value": "2026-01-01T00:00:00Z",
+									"description": "Начало периода",
+									"disabled": true
+								},
+								{
+									"key": "to",
+									"value": "2026-12-31T23:59:59Z",
+									"description": "Конец периода",
+									"disabled": true
+								},
+								{
+									"key": "roomId",
+									"value": "1",
+									"description": "ID комнаты",
+									"disabled": true
+								},
+								{
+									"key": "status",
+									"value": "2",
+									"description": "Статус: 0=Draft, 1=Submitted, 2=Confirmed, 3=Declined, 4=Cancelled",
+									"disabled": true
+								}
+							]
+						},
+						"description": "Получить список бронирований с фильтрацией"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Booking by ID",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "X-UserId",
+								"value": "1"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/bookings/1",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"bookings",
+								"1"
+							]
+						},
+						"description": "Получить детали бронирования по ID"
+					},
+					"response": []
+				},
+				{
+					"name": "Create Booking",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "X-UserId",
+								"value": "1",
+								"description": "ID пользователя (обязательно)"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"roomId\": 1,\n  \"startAt\": \"2026-02-10T10:00:00Z\",\n  \"endAt\": \"2026-02-10T12:00:00Z\",\n  \"participantEmails\": [\n    \"user1@example.com\",\n    \"user2@example.com\"\n  ],\n  \"description\": \"Встреча по проекту\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/bookings",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"bookings"
+							]
+						},
+						"description": "Создать новый запрос на бронирование (статус Draft)"
+					},
+					"response": []
+				},
+				{
+					"name": "Submit Booking",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "X-UserId",
+								"value": "1",
+								"description": "ID пользователя, который создал бронирование"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/bookings/1/submit",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"bookings",
+								"1",
+								"submit"
+							]
+						},
+						"description": "Отправить запрос на бронирование (Draft → Submitted)"
+					},
+					"response": []
+				},
+				{
+					"name": "Confirm Booking",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "X-UserId",
+								"value": "1"
+							},
+							{
+								"key": "X-Role",
+								"value": "Admin",
+								"description": "Только для Admin"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/bookings/1/confirm",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"bookings",
+								"1",
+								"confirm"
+							]
+						},
+						"description": "Подтвердить бронирование (Submitted → Confirmed) - только для Admin"
+					},
+					"response": []
+				},
+				{
+					"name": "Decline Booking",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "X-UserId",
+								"value": "1"
+							},
+							{
+								"key": "X-Role",
+								"value": "Admin",
+								"description": "Только для Admin"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"reason\": \"Комната уже занята в это время\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/bookings/1/decline",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"bookings",
+								"1",
+								"decline"
+							]
+						},
+						"description": "Отклонить бронирование (Submitted → Declined) - только для Admin"
+					},
+					"response": []
+				},
+				{
+					"name": "Cancel Booking",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "X-UserId",
+								"value": "1",
+								"description": "ID пользователя, который создал бронирование"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"reason\": \"Встреча отменена\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/bookings/1/cancel",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"bookings",
+								"1",
+								"cancel"
+							]
+						},
+						"description": "Отменить подтвержденное бронирование (Confirmed → Cancelled)"
+					},
+					"response": []
+				}
+			],
+			"description": "Эндпоинты для управления бронированиями"
+		}
+	],
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://localhost:5000",
+			"type": "string"
+		}
+	]
+}

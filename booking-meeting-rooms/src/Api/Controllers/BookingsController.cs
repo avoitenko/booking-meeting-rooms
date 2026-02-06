@@ -53,6 +53,11 @@ public class BookingsController : ControllerBase
         [FromBody] CreateBookingRequestDto dto,
         CancellationToken cancellationToken)
     {
+        if (!ModelState.IsValid)
+        {
+            return BadRequest(ModelState);
+        }
+
         try
         {
             var userId = GetCurrentUserId();
@@ -106,7 +111,7 @@ public class BookingsController : ControllerBase
     [HttpPost("{id}/submit")]
     [Authorize]
     public async Task<ActionResult<BookingRequestDto>> SubmitBooking(
-        Guid id,
+        int id,
         CancellationToken cancellationToken)
     {
         try
@@ -164,7 +169,7 @@ public class BookingsController : ControllerBase
     [HttpPost("{id}/confirm")]
     [Authorize(Roles = "Admin")]
     public async Task<ActionResult<BookingRequestDto>> ConfirmBooking(
-        Guid id,
+        int id,
         CancellationToken cancellationToken)
     {
         try
@@ -222,10 +227,15 @@ public class BookingsController : ControllerBase
     [HttpPost("{id}/decline")]
     [Authorize(Roles = "Admin")]
     public async Task<ActionResult<BookingRequestDto>> DeclineBooking(
-        Guid id,
+        int id,
         [FromBody] ReasonDto dto,
         CancellationToken cancellationToken)
     {
+        if (!ModelState.IsValid)
+        {
+            return BadRequest(ModelState);
+        }
+
         try
         {
             var userId = GetCurrentUserId();
@@ -274,10 +284,15 @@ public class BookingsController : ControllerBase
     [HttpPost("{id}/cancel")]
     [Authorize]
     public async Task<ActionResult<BookingRequestDto>> CancelBooking(
-        Guid id,
+        int id,
         [FromBody] ReasonDto dto,
         CancellationToken cancellationToken)
     {
+        if (!ModelState.IsValid)
+        {
+            return BadRequest(ModelState);
+        }
+
         try
         {
             var userId = GetCurrentUserId();
@@ -331,7 +346,7 @@ public class BookingsController : ControllerBase
     [HttpGet("{id}")]
     [Authorize]
     public async Task<ActionResult<BookingRequestDto>> GetBooking(
-        Guid id,
+        int id,
         CancellationToken cancellationToken)
     {
         try
@@ -415,9 +430,9 @@ public class BookingsController : ControllerBase
         }
     }
 
-    private Guid? GetCurrentUserId()
+    private int? GetCurrentUserId()
     {
         var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        return userIdClaim != null && Guid.TryParse(userIdClaim, out var userId) ? userId : null;
+        return userIdClaim != null && int.TryParse(userIdClaim, out var userId) ? userId : null;
     }
 }

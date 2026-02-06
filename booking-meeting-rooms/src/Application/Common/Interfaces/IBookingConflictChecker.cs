@@ -6,6 +6,6 @@ public interface IBookingConflictChecker
 {
     Task<bool> HasConflictAsync(
         BookingRequest bookingRequest,
-        Guid? excludeBookingId = null,
+        int? excludeBookingId = null,
         CancellationToken cancellationToken = default);
 }

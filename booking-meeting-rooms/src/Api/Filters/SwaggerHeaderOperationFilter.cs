@@ -8,19 +8,20 @@ public class SwaggerHeaderOperationFilter : IOperationFilter
 {
     public void Apply(OpenApiOperation operation, OperationFilterContext context)
     {
-        operation.Parameters ??= new List<OpenApiParameter>();
+        if (operation.Parameters is null)
+            operation.Parameters = new List<IOpenApiParameter>();
 
         // Додаємо заголовок X-UserId до всіх операцій
         operation.Parameters.Add(new OpenApiParameter
         {
             Name = "X-UserId",
             In = ParameterLocation.Header,
-            Description = "User ID для авторизації (обов'язково). Приклад: 00000000-0000-0000-0000-000000000001",
+            Description = "User ID для авторизації (обов'язково). Приклад: 1",
             Required = true,
             Schema = new OpenApiSchema
             {
-                Type = JsonSchemaType.String,
-                Format = "uuid"
+                Type = JsonSchemaType.Integer,
+                Format = "int32"
             }
         });
 
