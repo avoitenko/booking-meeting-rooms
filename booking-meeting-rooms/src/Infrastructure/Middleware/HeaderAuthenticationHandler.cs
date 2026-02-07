@@ -1,10 +1,9 @@
+using BookingMeetingRooms.Infrastructure.Data;
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using System.Security.Claims;
 using System.Text.Encodings.Web;
-using BookingMeetingRooms.Infrastructure.Data;
-using BookingMeetingRooms.Domain.Enums;
-using Microsoft.EntityFrameworkCore;
 
 namespace BookingMeetingRooms.Infrastructure.Middleware;
 
@@ -25,7 +24,7 @@ public class HeaderAuthenticationHandler : AuthenticationHandler<AuthenticationS
     protected override async Task<AuthenticateResult> HandleAuthenticateAsync()
     {
         var userId = Request.Headers[UserIdHeader].FirstOrDefault();
-        
+
         // Перевірка наявності X-UserId
         if (string.IsNullOrWhiteSpace(userId))
         {
@@ -41,7 +40,7 @@ public class HeaderAuthenticationHandler : AuthenticationHandler<AuthenticationS
         // Перевірка існування користувача в базі даних
         var dbContext = Context.RequestServices.GetRequiredService<AppDbContext>();
         var user = await dbContext.Users.FindAsync(new object[] { parsedUserId });
-        
+
         if (user == null)
         {
             return AuthenticateResult.Fail($"User with id {parsedUserId} not found in database.");
@@ -59,7 +58,7 @@ public class HeaderAuthenticationHandler : AuthenticationHandler<AuthenticationS
         {
             return AuthenticateResult.Fail($"Invalid X-Role value. Must be one of: {string.Join(", ", ValidRoles)}");
         }
-        
+
         // Перевірка відповідності ролі з бази даних
         var expectedRole = user.Role.ToString();
         if (!string.Equals(roleHeader, expectedRole, StringComparison.OrdinalIgnoreCase))

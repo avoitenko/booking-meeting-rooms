@@ -1,6 +1,6 @@
 using BookingMeetingRooms.Domain.Common;
-using BookingMeetingRooms.Domain.ValueObjects;
 using BookingMeetingRooms.Domain.Enums;
+using BookingMeetingRooms.Domain.ValueObjects;
 
 namespace BookingMeetingRooms.Domain.Entities;
 
@@ -8,19 +8,19 @@ public class BookingRequest : Entity
 {
     public int RoomId { get; private set; }
     public Room Room { get; private set; } = null!;
-    
+
     public TimeSlot TimeSlot { get; private set; } = null!;
-    
+
     public List<string> ParticipantEmails { get; private set; } = new();
-    
+
     public string Description { get; private set; } = string.Empty;
-    
+
     public BookingStatus Status { get; private set; } = BookingStatus.Draft;
-    
+
     public int CreatedByUserId { get; private set; }
-    
+
     public byte[] RowVersion { get; private set; } = Array.Empty<byte>();
-    
+
     public List<BookingStatusTransition> StatusTransitions { get; private set; } = new();
 
     private BookingRequest() { }
@@ -77,7 +77,7 @@ public class BookingRequest : Entity
 
         Status = BookingStatus.Confirmed;
         UpdatedAt = DateTime.UtcNow;
-        
+
         AddStatusTransition(BookingStatus.Submitted, BookingStatus.Confirmed, confirmedByUserId, null);
     }
 
@@ -91,7 +91,7 @@ public class BookingRequest : Entity
 
         Status = BookingStatus.Declined;
         UpdatedAt = DateTime.UtcNow;
-        
+
         AddStatusTransition(BookingStatus.Submitted, BookingStatus.Declined, declinedByUserId, reason);
     }
 
@@ -105,7 +105,7 @@ public class BookingRequest : Entity
 
         Status = BookingStatus.Cancelled;
         UpdatedAt = DateTime.UtcNow;
-        
+
         AddStatusTransition(BookingStatus.Confirmed, BookingStatus.Cancelled, cancelledByUserId, reason);
     }
 
@@ -142,7 +142,7 @@ public class BookingRequest : Entity
             toStatus,
             changedByUserId,
             reason);
-        
+
         StatusTransitions.Add(transition);
     }
 }

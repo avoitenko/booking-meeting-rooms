@@ -1,7 +1,7 @@
-using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using BookingMeetingRooms.Domain.Entities;
 using BookingMeetingRooms.Domain.Enums;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace BookingMeetingRooms.Infrastructure.Data.Configurations;
 

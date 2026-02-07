@@ -1,6 +1,6 @@
-using Microsoft.EntityFrameworkCore;
-using BookingMeetingRooms.Domain.Entities;
 using BookingMeetingRooms.Application.Common.Interfaces;
+using BookingMeetingRooms.Domain.Entities;
+using Microsoft.EntityFrameworkCore;
 
 namespace BookingMeetingRooms.Infrastructure.Data;
 
@@ -18,7 +18,7 @@ public class AppDbContext : DbContext, IApplicationDbContext
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
-        
+
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
     }
 }

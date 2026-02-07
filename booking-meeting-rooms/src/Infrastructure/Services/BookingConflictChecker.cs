@@ -1,9 +1,9 @@
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Options;
 using BookingMeetingRooms.Application.Common.Interfaces;
 using BookingMeetingRooms.Domain.Entities;
 using BookingMeetingRooms.Domain.Enums;
 using BookingMeetingRooms.Infrastructure.Data;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 
 namespace BookingMeetingRooms.Infrastructure.Services;
 

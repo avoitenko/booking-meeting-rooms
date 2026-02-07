@@ -7,12 +7,12 @@ public class BookingStatusTransition : Entity
 {
     public int BookingRequestId { get; private set; }
     public BookingRequest BookingRequest { get; private set; } = null!;
-    
+
     public BookingStatus FromStatus { get; private set; }
     public BookingStatus ToStatus { get; private set; }
-    
+
     public int ChangedByUserId { get; private set; }
-    
+
     public string? Reason { get; private set; }
 
     private BookingStatusTransition() { }

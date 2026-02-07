@@ -1,14 +1,13 @@
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.EntityFrameworkCore;
+using BookingMeetingRooms.Api.Dtos;
 using BookingMeetingRooms.Application.Common.Interfaces;
 using BookingMeetingRooms.Application.Features.Bookings.Dtos;
 using BookingMeetingRooms.Application.Features.Bookings.Mappings;
 using BookingMeetingRooms.Domain.Entities;
-using BookingMeetingRooms.Domain.Exceptions;
-using System.Security.Claims;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Swashbuckle.AspNetCore.Annotations;
-using BookingMeetingRooms.Api.Dtos;
+using System.Security.Claims;
 
 namespace BookingMeetingRooms.Api.Controllers;
 
@@ -197,7 +196,7 @@ public class BookingsController : ControllerBase
             _context.BookingRequests.Add(bookingRequest);
             await _context.SaveChangesAsync(cancellationToken);
 
-            // Перезагружаем с Room для маппинга в DTO
+            // Перезавантажуємо з Room для маппінгу в DTO
             var createdBooking = await _context.BookingRequests
                 .Include(b => b.Room)
                 .FirstOrDefaultAsync(b => b.Id == bookingRequest.Id, cancellationToken);
@@ -333,7 +332,7 @@ public class BookingsController : ControllerBase
     /// <summary>
     /// Скасувати підтверджене бронювання (Confirmed → Cancelled) - тільки для Employee (свої бронювання)
     /// </summary>
-    [SwaggerOperation(Summary="Скасувати підтверджене бронювання")]
+    [SwaggerOperation(Summary = "Скасувати підтверджене бронювання")]
     [HttpPost("{id}/cancel")]
     [Authorize]
     public async Task<ActionResult<BookingRequestDto>> CancelBooking(
@@ -417,7 +416,7 @@ public class BookingsController : ControllerBase
     /// <summary>
     /// Підтвердити запит на бронювання (Submitted → Confirmed) - тільки для Admin
     /// </summary>
-    [SwaggerOperation(Summary= "Підтвердити запит на бронювання (тільки для Admin)")]
+    [SwaggerOperation(Summary = "Підтвердити запит на бронювання (тільки для Admin)")]
     [HttpPost("{id}/confirm")]
     [Authorize(Roles = "Admin")]
     public async Task<ActionResult<BookingRequestDto>> ConfirmBooking(
@@ -497,7 +496,7 @@ public class BookingsController : ControllerBase
     /// <summary>
     /// Відхилити запит на бронювання (Submitted → Declined) - тільки для Admin
     /// </summary>
-    [SwaggerOperation(Summary= "Відхилити запит на бронювання (тільки для Admin)")]
+    [SwaggerOperation(Summary = "Відхилити запит на бронювання (тільки для Admin)")]
     [HttpPost("{id}/decline")]
     [Authorize(Roles = "Admin")]
     public async Task<ActionResult<BookingRequestDto>> DeclineBooking(
@@ -568,7 +567,7 @@ public class BookingsController : ControllerBase
         }
     }
 
-    
+
 
     //+------------------------------------------------------------------+
     private int? GetCurrentUserId()

@@ -1,27 +1,31 @@
-using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Infrastructure;
-using Serilog;
-using BookingMeetingRooms.Infrastructure.Data;
-using BookingMeetingRooms.Application.Common.Interfaces;
-using BookingMeetingRooms.Infrastructure.Services;
 using BookingMeetingRooms.Api.Middleware;
+using BookingMeetingRooms.Application.Common.Interfaces;
+using BookingMeetingRooms.Infrastructure.Data;
+using BookingMeetingRooms.Infrastructure.Services;
+using Microsoft.EntityFrameworkCore;
+using Serilog;
 
 namespace BookingMeetingRooms;
 
 public class Program
 {
-    public static void Main(string[] args)
+    public static async Task<int> Main(string[] args)
     {
-        // текущая папка приложения
+        // Перевіряємо, якщо перший аргумент - "migrate", запускаємо утиліту міграцій
+        if (args.Length > 0 && args[0].ToLowerInvariant() == "migrate")
+        {
+            return await MigrationRunner.RunAsync(args);
+        }
+
+        // Інакше запускаємо звичайний веб-додаток
+        // поточна папка додатку
         Environment.CurrentDirectory = AppContext.BaseDirectory;
-
-
 
         try
         {
             var builder = WebApplication.CreateBuilder(args);
 
-            
+
             // Налаштування Serilog через вбудовану інтеграцію ASP.NET Core
             try
             {
@@ -31,8 +35,8 @@ public class Program
                     .Enrich.WithThreadId()
                     .WriteTo.Console()
                     .WriteTo.File(
-                        path:"logs/.log", 
-                        rollingInterval: RollingInterval.Day, 
+                        path: "logs/.log",
+                        rollingInterval: RollingInterval.Day,
                         outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff}\t{ThreadId}\t[{Level:u3}]\t{SourceContext}\t{Message} {NewLine}{Exception}")
                     .CreateLogger();
             }
@@ -84,16 +88,16 @@ public class Program
                 Log.Fatal("PostgreSqlConnection configuration is missing");
                 throw new InvalidOperationException("PostgreSqlConnection configuration is missing");
             }
-            
+
             var connectionString = postgreSqlConnection.ToConnectionString();
-            Log.Information("PostgreSQL connection string configured: Host={Host}, Port={Port}, Database={Database}", 
+            Log.Information("PostgreSQL connection string configured: Host={Host}, Port={Port}, Database={Database}",
                 postgreSqlConnection.Host, postgreSqlConnection.Port, postgreSqlConnection.Database);
-            
+
             builder.Services.AddDbContext<AppDbContext>(options =>
                 options.UseNpgsql(connectionString));
             Log.Information("DbContext configured");
 
-            builder.Services.AddScoped<IApplicationDbContext>(provider => 
+            builder.Services.AddScoped<IApplicationDbContext>(provider =>
                 provider.GetRequiredService<AppDbContext>());
 
             // Налаштування BookingSettings
@@ -125,7 +129,7 @@ public class Program
                 // Перевіряємо, чи є HTTPS endpoint в конфігурації (опціонально)
                 var kestrelSection = builder.Configuration.GetSection("Kestrel:Endpoints:Https");
                 var enableHttps = kestrelSection.Exists() && !string.IsNullOrEmpty(kestrelSection.GetValue<string>("Url"));
-                
+
                 if (enableHttps)
                 {
                     try
@@ -158,7 +162,7 @@ public class Program
 
             // Налаштування HTTP pipeline
             Log.Information("Configuring HTTP pipeline...");
-            
+
             // Swagger доступний завжди (не тільки в Development)
             app.UseSwagger();
             app.UseSwaggerUI(c =>
@@ -172,7 +176,7 @@ public class Program
             Log.Information("Swagger UI configured and available at root path");
 
             app.UseSerilogRequestLogging();
-            
+
             // HTTPS редирект тільки якщо HTTPS endpoint налаштований в конфігурації
             var kestrelHttpsSection = app.Configuration.GetSection("Kestrel:Endpoints:Https");
             if (kestrelHttpsSection.Exists() && !string.IsNullOrEmpty(kestrelHttpsSection.GetValue<string>("Url")))
@@ -191,7 +195,7 @@ public class Program
             {
                 Log.Information("HTTPS redirection disabled (HTTPS endpoint not configured)");
             }
-            
+
             app.UseCors();
             app.UseAuthentication();
             app.UseAuthorization();
@@ -206,12 +210,12 @@ public class Program
                 using (var scope = app.Services.CreateScope())
                 {
                     var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-                    
+
                     // Перевіряємо підключення до бази даних
                     if (dbContext.Database.CanConnect())
                     {
                         Log.Information("Database connection successful!");
-                        
+
                         // Перевіряємо, чи база даних існує та доступна
                         var canConnectAsync = dbContext.Database.CanConnectAsync();
                         if (canConnectAsync.Result)
@@ -227,170 +231,23 @@ public class Program
             }
             catch (Exception ex)
             {
-                Log.Error(ex, "Failed to connect to database. Exception type: {ExceptionType}, Message: {Message}", 
+                Log.Error(ex, "Failed to connect to database. Exception type: {ExceptionType}, Message: {Message}",
                     ex.GetType().FullName, ex.Message);
                 Log.Warning("Application will continue to start, but database operations may fail.");
             }
 
-            // Застосування міграцій при старті (для всіх середовищ)
-            Log.Information("Environment: {Environment}, attempting database migrations...", app.Environment.EnvironmentName);
-            try
-            {
-                using (var scope = app.Services.CreateScope())
-                {
-                    Log.Information("Creating service scope for database operations...");
-                    var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-                    Log.Information("DbContext retrieved successfully");
-                    
-                    try
-                    {
-                        Log.Information("Applying database migrations...");
-                        dbContext.Database.Migrate();
-                        Log.Information("Database migrations applied successfully");
-
-                        // Перевірка існування таблиці Users через SQL
-                        var usersTableExists = false;
-                        try
-                        {
-                            var connection = dbContext.Database.GetDbConnection();
-                            if (connection.State != System.Data.ConnectionState.Open)
-                            {
-                                connection.Open();
-                            }
-                            
-                            using var command = connection.CreateCommand();
-                            command.CommandText = "SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'Users')";
-                            var result = command.ExecuteScalar();
-                            usersTableExists = result != null && (bool)result;
-                            
-                            if (connection.State == System.Data.ConnectionState.Open)
-                            {
-                                connection.Close();
-                            }
-                        }
-                        catch (Exception checkEx)
-                        {
-                            Log.Warning(checkEx, "Error checking Users table existence, assuming it doesn't exist");
-                            usersTableExists = false;
-                        }
-
-                        // Якщо таблиця не існує, створюємо її вручну
-                        if (!usersTableExists)
-                        {
-                            Log.Warning("Users table does not exist. Creating it manually...");
-                            try
-                            {
-                                dbContext.Database.ExecuteSqlRaw(@"
-                                    CREATE TABLE IF NOT EXISTS ""Users"" (
-                                        ""Id"" integer NOT NULL GENERATED BY DEFAULT AS IDENTITY,
-                                        ""Name"" character varying(200) NOT NULL,
-                                        ""Email"" character varying(200) NOT NULL,
-                                        ""Role"" text NOT NULL,
-                                        ""CreatedAt"" timestamp with time zone NOT NULL,
-                                        ""UpdatedAt"" timestamp with time zone NULL,
-                                        CONSTRAINT ""PK_Users"" PRIMARY KEY (""Id"")
-                                    );
-                                    
-                                    CREATE UNIQUE INDEX IF NOT EXISTS ""IX_Users_Email"" ON ""Users"" (""Email"");
-                                ");
-                                Log.Information("Users table created successfully");
-                            }
-                            catch (Exception createEx)
-                            {
-                                Log.Error(createEx, "Failed to create Users table manually. Exception type: {ExceptionType}", createEx.GetType().FullName);
-                            }
-                        }
-
-                        // Перевірка доступності таблиці Users та кількості записів
-                        var canAccessUsersTable = false;
-                        var userCount = 0;
-                        try
-                        {
-                            userCount = dbContext.Users.Count();
-                            canAccessUsersTable = true;
-                            Log.Information("Users table exists and is accessible. Current user count: {Count}", userCount);
-                        }
-                        catch (Exception ex)
-                        {
-                            Log.Error(ex, "Cannot access Users table. Exception type: {ExceptionType}", ex.GetType().FullName);
-                        }
-
-                        // Seed дані - створення прикладних кімнат та користувачів тільки в Development режимі
-                        if (app.Environment.IsDevelopment())
-                        {
-                            Log.Information("Development environment detected, checking if seed data is needed...");
-                            
-                            // Seed користувачів - додаємо якщо таблиця доступна і порожня
-                            if (canAccessUsersTable && userCount == 0)
-                            {
-                                Log.Information("Users table is empty, creating seed data...");
-                                var users = new[]
-                                {
-                                    new Domain.Entities.User("Адміністратор", "admin@company.com", Domain.Enums.UserRole.Admin),
-                                    new Domain.Entities.User("Співробітник 1", "employee1@company.com", Domain.Enums.UserRole.Employee),
-                                    new Domain.Entities.User("Співробітник 2", "employee2@company.com", Domain.Enums.UserRole.Employee)
-                                };
-
-                                dbContext.Users.AddRange(users);
-                                dbContext.SaveChanges();
-                                Log.Information("Seed data: {Count} users created", users.Length);
-                            }
-                            else
-                            {
-                                Log.Information("Users table already contains data, skipping seed");
-                            }
-                            
-                            // Seed кімнат
-                            if (!dbContext.Rooms.Any())
-                            {
-                                Log.Information("Rooms table is empty, creating seed data...");
-                                var rooms = new[]
-                                {
-                                    new Domain.Entities.Room("Конференц-зал A", 20, "Поверх 1", true),
-                                    new Domain.Entities.Room("Конференц-зал B", 15, "Поверх 1", true),
-                                    new Domain.Entities.Room("Мала переговорна", 6, "Поверх 2", true),
-                                    new Domain.Entities.Room("Велика переговорна", 30, "Поверх 2", true),
-                                    new Domain.Entities.Room("Кімната для переговорів", 10, "Поверх 3", true)
-                                };
-
-                                dbContext.Rooms.AddRange(rooms);
-                                dbContext.SaveChanges();
-                                Log.Information("Seed data: {Count} rooms created", rooms.Length);
-                            }
-                            else
-                            {
-                                Log.Information("Rooms table already contains data, skipping seed");
-                            }
-                        }
-                        else
-                        {
-                            Log.Information("Production environment detected, skipping seed data");
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        Log.Error(ex, "Failed to apply database migrations or seed data. Exception type: {ExceptionType}", ex.GetType().FullName);
-                        // Не кидаємо виняток далі, щоб дозволити додатку запуститися навіть якщо міграції не вдалося застосувати
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                Log.Error(ex, "Failed to create service scope for database operations. Exception type: {ExceptionType}", ex.GetType().FullName);
-                // Не кидаємо виняток далі, щоб дозволити додатку запуститися
-            }
-
             Log.Information("Application starting up");
 
-            app.Run();
+            await app.RunAsync();
+            return 0;
         }
         catch (Exception ex)
         {
-            Log.Fatal(ex, "Application failed to start. Exception type: {ExceptionType}, Message: {Message}, StackTrace: {StackTrace}", 
-                ex.GetType().FullName, 
-                ex.Message, 
+            Log.Fatal(ex, "Application failed to start. Exception type: {ExceptionType}, Message: {Message}, StackTrace: {StackTrace}",
+                ex.GetType().FullName,
+                ex.Message,
                 ex.StackTrace);
-            
+
             // Також виводимо в консоль для надійності
             Console.WriteLine($"FATAL ERROR: {ex.GetType().FullName}");
             Console.WriteLine($"Message: {ex.Message}");
@@ -400,9 +257,9 @@ public class Program
                 Console.WriteLine($"Inner Exception: {ex.InnerException.GetType().FullName}");
                 Console.WriteLine($"Inner Message: {ex.InnerException.Message}");
             }
-            
+
             Log.CloseAndFlush();
-            throw;
+            return 1;
         }
         finally
         {

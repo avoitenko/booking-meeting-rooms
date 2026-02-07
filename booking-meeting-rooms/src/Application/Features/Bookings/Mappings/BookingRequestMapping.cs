@@ -1,5 +1,5 @@
-using BookingMeetingRooms.Domain.Entities;
 using BookingMeetingRooms.Application.Features.Bookings.Dtos;
+using BookingMeetingRooms.Domain.Entities;
 
 namespace BookingMeetingRooms.Application.Features.Bookings.Mappings;
 

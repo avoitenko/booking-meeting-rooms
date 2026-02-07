@@ -1,5 +1,5 @@
-using Swashbuckle.AspNetCore.SwaggerGen;
 using Microsoft.OpenApi;
+using Swashbuckle.AspNetCore.SwaggerGen;
 
 
 namespace BookingMeetingRooms.Api.Filters;

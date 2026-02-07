@@ -1,13 +1,12 @@
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.EntityFrameworkCore;
+using BookingMeetingRooms.Api.Dtos;
 using BookingMeetingRooms.Application.Common.Interfaces;
 using BookingMeetingRooms.Application.Features.Rooms.Dtos;
 using BookingMeetingRooms.Application.Features.Rooms.Mappings;
-using BookingMeetingRooms.Domain.Entities;
-using System.Security.Claims;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Swashbuckle.AspNetCore.Annotations;
-using BookingMeetingRooms.Api.Dtos;
+using System.Security.Claims;
 
 namespace BookingMeetingRooms.Api.Controllers;
 
@@ -177,7 +176,7 @@ public class RoomsController : ControllerBase
                     404));
             }
 
-            // Частичное обновление - обновляем только переданные поля
+            // Часткове оновлення - оновлюємо тільки передані поля
             room.UpdatePartial(dto.Name, dto.Capacity, dto.Location, dto.IsActive);
             await _context.SaveChangesAsync(cancellationToken);
 

@@ -22,7 +22,7 @@ public class ErrorResponseDto
     public static ErrorResponseDto FromModelState(ModelStateDictionary modelState, string error = "ValidationError")
     {
         var validationErrors = new Dictionary<string, string[]>();
-        
+
         foreach (var keyValuePair in modelState)
         {
             var key = keyValuePair.Key;
@@ -30,7 +30,7 @@ public class ErrorResponseDto
                 .Select(e => e.ErrorMessage)
                 .Where(e => !string.IsNullOrEmpty(e))
                 .ToArray();
-            
+
             if (errors.Length > 0)
             {
                 validationErrors[key] = errors;
