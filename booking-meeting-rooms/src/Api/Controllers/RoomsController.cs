@@ -7,6 +7,7 @@ using BookingMeetingRooms.Application.Features.Rooms.Mappings;
 using BookingMeetingRooms.Domain.Entities;
 using System.Security.Claims;
 using Swashbuckle.AspNetCore.Annotations;
+using BookingMeetingRooms.Api.Dtos;
 
 namespace BookingMeetingRooms.Api.Controllers;
 
@@ -25,6 +26,8 @@ public class RoomsController : ControllerBase
         _logger = logger;
     }
 
+
+    //+------------------------------------------------------------------+
     /// <summary>
     /// Створити кімнату (тільки для Admin)
     /// </summary>
@@ -66,6 +69,8 @@ public class RoomsController : ControllerBase
         }
     }
 
+
+    //+------------------------------------------------------------------+
     /// <summary>
     /// Отримати список кімнат з фільтрацією
     /// </summary>
@@ -100,7 +105,7 @@ public class RoomsController : ControllerBase
             }
 
             var rooms = await query
-                .OrderBy(r => r.Location)
+                .OrderBy(r => r.Id)
                 .ThenBy(r => r.Name)
                 .ToListAsync(cancellationToken);
 
@@ -113,6 +118,7 @@ public class RoomsController : ControllerBase
         }
     }
 
+    //+------------------------------------------------------------------+
     /// <summary>
     /// Отримати кімнату за ID
     /// </summary>
@@ -125,7 +131,11 @@ public class RoomsController : ControllerBase
 
             if (room == null)
             {
-                return NotFound($"Room with id {id} not found");
+                return NotFound(new ErrorResponseDto(
+                    "RoomNotFound",
+                    $"Room with id {id} not found",
+                    null,
+                    404));
             }
 
             return Ok(room.ToDto());
@@ -137,6 +147,7 @@ public class RoomsController : ControllerBase
         }
     }
 
+    //+------------------------------------------------------------------+
     /// <summary>
     /// Оновити кімнату (тільки для Admin)
     /// </summary>
@@ -158,7 +169,11 @@ public class RoomsController : ControllerBase
 
             if (room == null)
             {
-                return NotFound($"Room with id {id} not found");
+                return NotFound(new ErrorResponseDto(
+                    "RoomNotFound",
+                    $"Room with id {id} not found",
+                    null,
+                    404));
             }
 
             room.Update(dto.Name, dto.Capacity, dto.Location, dto.IsActive);
@@ -171,7 +186,11 @@ public class RoomsController : ControllerBase
         catch (ArgumentException ex)
         {
             _logger.LogWarning(ex, "Validation error updating room {RoomId}", id);
-            return BadRequest(ex.Message);
+            return BadRequest(new ErrorResponseDto(
+                "ValidationError",
+                ex.Message,
+                null,
+                400));
         }
         catch (Exception ex)
         {
@@ -180,6 +199,7 @@ public class RoomsController : ControllerBase
         }
     }
 
+    //+------------------------------------------------------------------+
     /// <summary>
     /// Деактивувати кімнату (тільки для Admin)
     /// </summary>
@@ -193,7 +213,11 @@ public class RoomsController : ControllerBase
 
             if (room == null)
             {
-                return NotFound($"Room with id {id} not found");
+                return NotFound(new ErrorResponseDto(
+                    "RoomNotFound",
+                    $"Room with id {id} not found",
+                    null,
+                    404));
             }
 
             room.Deactivate();
@@ -210,6 +234,7 @@ public class RoomsController : ControllerBase
         }
     }
 
+    //+------------------------------------------------------------------+
     private int? GetCurrentUserId()
     {
         var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;

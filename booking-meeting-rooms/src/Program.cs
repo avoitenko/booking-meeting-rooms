@@ -11,45 +11,34 @@ public class Program
 {
     public static void Main(string[] args)
     {
-        // Створюємо папку logs, якщо вона не існує
-        try
-        {
-            if (!Directory.Exists("logs"))
-            {
-                Directory.CreateDirectory("logs");
-            }
-        }
-        catch
-        {
-            // Ігноруємо помилки створення папки
-        }
+        // текущая папка приложения
+        Environment.CurrentDirectory = AppContext.BaseDirectory;
+
+
 
         try
         {
             var builder = WebApplication.CreateBuilder(args);
 
+            
             // Налаштування Serilog через вбудовану інтеграцію ASP.NET Core
-            // Це гарантує, що всі залежності завантажені перед ініціалізацією Serilog
             try
             {
                 Log.Logger = new LoggerConfiguration()
                     .ReadFrom.Configuration(builder.Configuration)
                     .Enrich.FromLogContext()
                     .Enrich.WithThreadId()
-                    .WriteTo.Console(outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Message:lj}{NewLine}{Exception}")
-                    .WriteTo.File("logs/.log", rollingInterval: RollingInterval.Day, outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Message:lj}{NewLine}{Exception}")
+                    .WriteTo.Console()
+                    .WriteTo.File(
+                        path:"logs/.log", 
+                        rollingInterval: RollingInterval.Day, 
+                        outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff}\t{ThreadId}\t[{Level:u3}]\t{SourceContext}\t{Message} {NewLine}{Exception}")
                     .CreateLogger();
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                // Якщо не вдалося налаштувати Serilog з конфігурації, використовуємо простий варіант
-                Log.Logger = new LoggerConfiguration()
-                    .Enrich.FromLogContext()
-                    .Enrich.WithThreadId()
-                    .WriteTo.Console(outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Message:lj}{NewLine}{Exception}")
-                    .WriteTo.File("logs/.log", rollingInterval: RollingInterval.Day, outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Message:lj}{NewLine}{Exception}")
-                    .CreateLogger();
-                Log.Warning(ex, "Failed to read Serilog configuration from appsettings, using default configuration");
+                Console.WriteLine($"FATAL ERROR: logger is not initialized");
+                throw;
             }
 
             builder.Host.UseSerilog();
@@ -76,7 +65,6 @@ public class Program
             builder.Services.AddSwaggerGen(c =>
             {
                 c.EnableAnnotations();
-                
                 // Додаємо можливість вводити кастомні заголовки в Swagger UI через параметри
                 c.OperationFilter<Api.Filters.SwaggerHeaderOperationFilter>();
             });
@@ -309,7 +297,9 @@ public class Program
         catch (Exception ex)
         {
             Log.Fatal(ex, "Application failed to start. Exception type: {ExceptionType}, Message: {Message}, StackTrace: {StackTrace}", 
-                ex.GetType().FullName, ex.Message, ex.StackTrace);
+                ex.GetType().FullName, 
+                ex.Message, 
+                ex.StackTrace);
             
             // Також виводимо в консоль для надійності
             Console.WriteLine($"FATAL ERROR: {ex.GetType().FullName}");

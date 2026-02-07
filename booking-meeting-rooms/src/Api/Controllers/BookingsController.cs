@@ -8,6 +8,7 @@ using BookingMeetingRooms.Domain.Entities;
 using BookingMeetingRooms.Domain.Exceptions;
 using System.Security.Claims;
 using Swashbuckle.AspNetCore.Annotations;
+using BookingMeetingRooms.Api.Dtos;
 
 namespace BookingMeetingRooms.Api.Controllers;
 
@@ -63,13 +64,21 @@ public class BookingsController : ControllerBase
             var userId = GetCurrentUserId();
             if (!userId.HasValue)
             {
-                return Unauthorized("User ID is required");
+                return Unauthorized(new ErrorResponseDto(
+                    "Unauthorized",
+                    "User ID is required",
+                    "Please provide X-UserId header",
+                    401));
             }
 
             var room = await _context.Rooms.FindAsync(new object[] { dto.RoomId }, cancellationToken);
             if (room == null)
             {
-                return NotFound($"Room with id {dto.RoomId} not found");
+                return NotFound(new ErrorResponseDto(
+                    "RoomNotFound",
+                    $"Room with id {dto.RoomId} not found",
+                    null,
+                    404));
             }
 
             var timeSlot = _timeSlotValidator.ValidateAndCreate(dto.StartAt, dto.EndAt);
@@ -96,7 +105,11 @@ public class BookingsController : ControllerBase
         catch (ArgumentException ex)
         {
             _logger.LogWarning(ex, "Validation error creating booking request");
-            return BadRequest(ex.Message);
+            return BadRequest(new ErrorResponseDto(
+                "ValidationError",
+                ex.Message,
+                null,
+                400));
         }
         catch (Exception ex)
         {
@@ -119,7 +132,11 @@ public class BookingsController : ControllerBase
             var userId = GetCurrentUserId();
             if (!userId.HasValue)
             {
-                return Unauthorized("User ID is required");
+                return Unauthorized(new ErrorResponseDto(
+                    "Unauthorized",
+                    "User ID is required",
+                    "Please provide X-UserId header",
+                    401));
             }
 
             var bookingRequest = await _context.BookingRequests
@@ -129,19 +146,31 @@ public class BookingsController : ControllerBase
 
             if (bookingRequest == null)
             {
-                return NotFound($"Booking request with id {id} not found");
+                return NotFound(new ErrorResponseDto(
+                    "BookingNotFound",
+                    $"Booking request with id {id} not found",
+                    null,
+                    404));
             }
 
             if (bookingRequest.CreatedByUserId != userId.Value)
             {
-                return Forbid("You can only submit your own booking requests");
+                return StatusCode(403, new ErrorResponseDto(
+                    "Forbidden",
+                    "You can only submit your own booking requests",
+                    null,
+                    403));
             }
 
             // Перевірка конфліктів перед відправкою
             var hasConflict = await _conflictChecker.HasConflictAsync(bookingRequest, bookingRequest.Id, cancellationToken);
             if (hasConflict)
             {
-                return Conflict("Booking conflict detected. Another booking exists for this room and time slot.");
+                return Conflict(new ErrorResponseDto(
+                    "BookingConflict",
+                    "Booking conflict detected. Another booking exists for this room and time slot.",
+                    null,
+                    409));
             }
 
             bookingRequest.Submit();
@@ -154,7 +183,11 @@ public class BookingsController : ControllerBase
         catch (InvalidOperationException ex)
         {
             _logger.LogWarning(ex, "Invalid operation submitting booking {BookingId}", id);
-            return BadRequest(ex.Message);
+            return BadRequest(new ErrorResponseDto(
+                "InvalidOperation",
+                ex.Message,
+                null,
+                400));
         }
         catch (Exception ex)
         {
@@ -177,7 +210,11 @@ public class BookingsController : ControllerBase
             var userId = GetCurrentUserId();
             if (!userId.HasValue)
             {
-                return Unauthorized("User ID is required");
+                return Unauthorized(new ErrorResponseDto(
+                    "Unauthorized",
+                    "User ID is required",
+                    "Please provide X-UserId header",
+                    401));
             }
 
             var bookingRequest = await _context.BookingRequests
@@ -187,14 +224,22 @@ public class BookingsController : ControllerBase
 
             if (bookingRequest == null)
             {
-                return NotFound($"Booking request with id {id} not found");
+                return NotFound(new ErrorResponseDto(
+                    "BookingNotFound",
+                    $"Booking request with id {id} not found",
+                    null,
+                    404));
             }
 
             // Перевірка конфліктів перед підтвердженням
             var hasConflict = await _conflictChecker.HasConflictAsync(bookingRequest, bookingRequest.Id, cancellationToken);
             if (hasConflict)
             {
-                return Conflict("Booking conflict detected. Another confirmed booking exists for this room and time slot.");
+                return Conflict(new ErrorResponseDto(
+                    "BookingConflict",
+                    "Booking conflict detected. Another confirmed booking exists for this room and time slot.",
+                    null,
+                    409));
             }
 
             bookingRequest.Confirm(userId.Value);
@@ -207,12 +252,20 @@ public class BookingsController : ControllerBase
         catch (InvalidOperationException ex)
         {
             _logger.LogWarning(ex, "Invalid operation confirming booking {BookingId}", id);
-            return BadRequest(ex.Message);
+            return BadRequest(new ErrorResponseDto(
+                "InvalidOperation",
+                ex.Message,
+                null,
+                400));
         }
         catch (DbUpdateConcurrencyException)
         {
             _logger.LogWarning("Concurrency conflict confirming booking {BookingId}", id);
-            return Conflict("Booking was modified by another user. Please refresh and try again.");
+            return Conflict(new ErrorResponseDto(
+                "ConcurrencyConflict",
+                "Booking was modified by another user. Please refresh and try again.",
+                null,
+                409));
         }
         catch (Exception ex)
         {
@@ -241,7 +294,11 @@ public class BookingsController : ControllerBase
             var userId = GetCurrentUserId();
             if (!userId.HasValue)
             {
-                return Unauthorized("User ID is required");
+                return Unauthorized(new ErrorResponseDto(
+                    "Unauthorized",
+                    "User ID is required",
+                    "Please provide X-UserId header",
+                    401));
             }
 
             var bookingRequest = await _context.BookingRequests
@@ -251,7 +308,11 @@ public class BookingsController : ControllerBase
 
             if (bookingRequest == null)
             {
-                return NotFound($"Booking request with id {id} not found");
+                return NotFound(new ErrorResponseDto(
+                    "BookingNotFound",
+                    $"Booking request with id {id} not found",
+                    null,
+                    404));
             }
 
             bookingRequest.Decline(userId.Value, dto.Reason);
@@ -264,12 +325,20 @@ public class BookingsController : ControllerBase
         catch (InvalidOperationException ex)
         {
             _logger.LogWarning(ex, "Invalid operation declining booking {BookingId}", id);
-            return BadRequest(ex.Message);
+            return BadRequest(new ErrorResponseDto(
+                "InvalidOperation",
+                ex.Message,
+                null,
+                400));
         }
         catch (ArgumentException ex)
         {
             _logger.LogWarning(ex, "Validation error declining booking {BookingId}", id);
-            return BadRequest(ex.Message);
+            return BadRequest(new ErrorResponseDto(
+                "ValidationError",
+                ex.Message,
+                null,
+                400));
         }
         catch (Exception ex)
         {
@@ -298,7 +367,11 @@ public class BookingsController : ControllerBase
             var userId = GetCurrentUserId();
             if (!userId.HasValue)
             {
-                return Unauthorized("User ID is required");
+                return Unauthorized(new ErrorResponseDto(
+                    "Unauthorized",
+                    "User ID is required",
+                    "Please provide X-UserId header",
+                    401));
             }
 
             var bookingRequest = await _context.BookingRequests
@@ -308,12 +381,20 @@ public class BookingsController : ControllerBase
 
             if (bookingRequest == null)
             {
-                return NotFound($"Booking request with id {id} not found");
+                return NotFound(new ErrorResponseDto(
+                    "BookingNotFound",
+                    $"Booking request with id {id} not found",
+                    null,
+                    404));
             }
 
             if (bookingRequest.CreatedByUserId != userId.Value)
             {
-                return Forbid("You can only cancel your own booking requests");
+                return StatusCode(403, new ErrorResponseDto(
+                    "Forbidden",
+                    "You can only cancel your own booking requests",
+                    null,
+                    403));
             }
 
             bookingRequest.Cancel(userId.Value, dto.Reason);
@@ -326,12 +407,20 @@ public class BookingsController : ControllerBase
         catch (InvalidOperationException ex)
         {
             _logger.LogWarning(ex, "Invalid operation cancelling booking {BookingId}", id);
-            return BadRequest(ex.Message);
+            return BadRequest(new ErrorResponseDto(
+                "InvalidOperation",
+                ex.Message,
+                null,
+                400));
         }
         catch (ArgumentException ex)
         {
             _logger.LogWarning(ex, "Validation error cancelling booking {BookingId}", id);
-            return BadRequest(ex.Message);
+            return BadRequest(new ErrorResponseDto(
+                "ValidationError",
+                ex.Message,
+                null,
+                400));
         }
         catch (Exception ex)
         {
@@ -358,7 +447,11 @@ public class BookingsController : ControllerBase
 
             if (bookingRequest == null)
             {
-                return NotFound($"Booking request with id {id} not found");
+                return NotFound(new ErrorResponseDto(
+                    "BookingNotFound",
+                    $"Booking request with id {id} not found",
+                    null,
+                    404));
             }
 
             return Ok(bookingRequest.ToDto());
@@ -392,7 +485,11 @@ public class BookingsController : ControllerBase
             {
                 if (!userId.HasValue)
                 {
-                    return Unauthorized("User ID is required");
+                    return Unauthorized(new ErrorResponseDto(
+                        "Unauthorized",
+                        "User ID is required",
+                        "Please provide X-UserId header",
+                        401));
                 }
                 query = query.Where(b => b.CreatedByUserId == userId.Value);
             }

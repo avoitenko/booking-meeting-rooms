@@ -53,10 +53,6 @@
     <PackageReference Include="Swashbuckle.AspNetCore.SwaggerUI" Version="10.1.2" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Folder Include="logs\" />
-  </ItemGroup>
-
   <!-- Виключення локалізаційних ресурсів з вихідної папки -->
   <Target Name="ExcludeLocalizationFolders" AfterTargets="CopyFilesToOutputDirectory">
     <ItemGroup>
