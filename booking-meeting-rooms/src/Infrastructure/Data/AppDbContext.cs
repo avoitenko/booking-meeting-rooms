@@ -13,6 +13,7 @@ public class AppDbContext : DbContext, IApplicationDbContext
     public DbSet<Room> Rooms { get; set; } = null!;
     public DbSet<BookingRequest> BookingRequests { get; set; } = null!;
     public DbSet<BookingStatusTransition> BookingStatusTransitions { get; set; } = null!;
+    public DbSet<User> Users { get; set; } = null!;
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

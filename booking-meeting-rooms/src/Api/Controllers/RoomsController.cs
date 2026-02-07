@@ -40,7 +40,7 @@ public class RoomsController : ControllerBase
     /// <response code="403">Немає прав доступу (потрібна роль Admin)</response>
     [HttpPost]
     [Authorize(Roles = "Admin")]
-    [SwaggerOperation(Summary = "Створити кімнату", Description = "Створює нову переговорну кімнату. Доступно тільки для адміністраторів.")]
+    [SwaggerOperation(Summary = "Створити кімнату (тільки для Admin)", Description = "Створює нову переговорну кімнату. Доступно тільки для адміністраторів.")]
     [SwaggerResponse(201, "Кімната успішно створена", typeof(RoomDto))]
     [SwaggerResponse(400, "Помилка валідації")]
     [SwaggerResponse(401, "Не авторизовано")]
@@ -49,7 +49,7 @@ public class RoomsController : ControllerBase
     {
         if (!ModelState.IsValid)
         {
-            return BadRequest(ModelState);
+            return BadRequest(ErrorResponseDto.FromModelState(ModelState));
         }
 
         try
@@ -122,6 +122,7 @@ public class RoomsController : ControllerBase
     /// <summary>
     /// Отримати кімнату за ID
     /// </summary>
+    [SwaggerOperation(Summary = "Отримати кімнату за ID", Description = "Повертає переговорну кімнату по ID")]
     [HttpGet("{id}")]
     public async Task<ActionResult<RoomDto>> GetRoom(int id, CancellationToken cancellationToken)
     {
@@ -146,12 +147,12 @@ public class RoomsController : ControllerBase
             return Problem("Failed to retrieve room", statusCode: 500);
         }
     }
-
     //+------------------------------------------------------------------+
     /// <summary>
     /// Оновити кімнату (тільки для Admin)
     /// </summary>
     [HttpPut("{id}")]
+    [SwaggerOperation(Summary = "Оновити кімнату за ID (тільки для Admin)")]
     [Authorize(Roles = "Admin")]
     public async Task<ActionResult<RoomDto>> UpdateRoom(
         int id,
@@ -160,7 +161,7 @@ public class RoomsController : ControllerBase
     {
         if (!ModelState.IsValid)
         {
-            return BadRequest(ModelState);
+            return BadRequest(ErrorResponseDto.FromModelState(ModelState));
         }
 
         try
@@ -176,7 +177,8 @@ public class RoomsController : ControllerBase
                     404));
             }
 
-            room.Update(dto.Name, dto.Capacity, dto.Location, dto.IsActive);
+            // Частичное обновление - обновляем только переданные поля
+            room.UpdatePartial(dto.Name, dto.Capacity, dto.Location, dto.IsActive);
             await _context.SaveChangesAsync(cancellationToken);
 
             _logger.LogInformation("Room updated: {RoomId} by user {UserId}", room.Id, GetCurrentUserId());
@@ -200,8 +202,10 @@ public class RoomsController : ControllerBase
     }
 
     //+------------------------------------------------------------------+
+
     /// <summary>
-    /// Деактивувати кімнату (тільки для Admin)
+    /// Видалити кімнату (тільки для Admin)
+    [SwaggerOperation(Summary = "Видалити кімнату за ID (тільки для Admin)")]
     /// </summary>
     [HttpDelete("{id}")]
     [Authorize(Roles = "Admin")]
@@ -220,12 +224,21 @@ public class RoomsController : ControllerBase
                     404));
             }
 
-            room.Deactivate();
+            _context.Rooms.Remove(room);
             await _context.SaveChangesAsync(cancellationToken);
 
-            _logger.LogInformation("Room deactivated: {RoomId} by user {UserId}", room.Id, GetCurrentUserId());
+            _logger.LogInformation("Room deleted: {RoomId} by user {UserId}", room.Id, GetCurrentUserId());
 
-            return NoContent();
+            return Ok(new { message = $"Room with id {id} has been deleted successfully" });
+        }
+        catch (Microsoft.EntityFrameworkCore.DbUpdateException ex) when (ex.InnerException?.Message?.Contains("foreign key") == true || ex.InnerException?.Message?.Contains("constraint") == true)
+        {
+            _logger.LogWarning(ex, "Cannot delete room {RoomId} because it has associated bookings", id);
+            return Conflict(new ErrorResponseDto(
+                "CannotDeleteRoom",
+                $"Cannot delete room with id {id} because it has associated booking requests",
+                "Please cancel or delete all booking requests for this room first",
+                409));
         }
         catch (Exception ex)
         {

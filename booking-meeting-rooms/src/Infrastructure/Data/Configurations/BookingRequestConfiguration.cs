@@ -64,7 +64,9 @@ public class BookingRequestConfiguration : IEntityTypeConfiguration<BookingReque
 
         builder.Property(b => b.RowVersion)
             .IsRowVersion()
-            .IsRequired();
+            .IsRequired()
+            .HasDefaultValueSql("md5(random()::text)::bytea")
+            .ValueGeneratedOnAddOrUpdate();
 
         builder.Property(b => b.CreatedAt)
             .IsRequired();

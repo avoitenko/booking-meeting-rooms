@@ -11,6 +11,7 @@ public class Room : Entity
 
     private Room() { }
 
+    //+------------------------------------------------------------------+
     public Room(string name, int capacity, string location, bool isActive = true)
     {
         if (string.IsNullOrWhiteSpace(name))
@@ -26,6 +27,7 @@ public class Room : Entity
         IsActive = isActive;
     }
 
+    //+------------------------------------------------------------------+
     public void Update(string name, int capacity, string location, bool isActive)
     {
         if (string.IsNullOrWhiteSpace(name))
@@ -42,15 +44,35 @@ public class Room : Entity
         UpdatedAt = DateTime.UtcNow;
     }
 
-    public void Deactivate()
+    //+------------------------------------------------------------------+
+    public void UpdatePartial(string? name = null, int? capacity = null, string? location = null, bool? isActive = null)
     {
-        IsActive = false;
-        UpdatedAt = DateTime.UtcNow;
-    }
+        if (name != null)
+        {
+            if (string.IsNullOrWhiteSpace(name))
+                throw new ArgumentException("Room name cannot be empty", nameof(name));
+            Name = name;
+        }
 
-    public void Activate()
-    {
-        IsActive = true;
+        if (capacity.HasValue)
+        {
+            if (capacity.Value <= 0)
+                throw new ArgumentException("Room capacity must be greater than 0", nameof(capacity));
+            Capacity = capacity.Value;
+        }
+
+        if (location != null)
+        {
+            if (string.IsNullOrWhiteSpace(location))
+                throw new ArgumentException("Room location cannot be empty", nameof(location));
+            Location = location;
+        }
+
+        if (isActive.HasValue)
+        {
+            IsActive = isActive.Value;
+        }
+
         UpdatedAt = DateTime.UtcNow;
     }
 }

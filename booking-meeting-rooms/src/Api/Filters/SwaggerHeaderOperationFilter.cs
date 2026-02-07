@@ -25,13 +25,13 @@ public class SwaggerHeaderOperationFilter : IOperationFilter
             }
         });
 
-        // Додаємо заголовок X-Role до всіх операцій
+        // Додаємо заголовок X-Role до всіх операцій (обов'язковий)
         operation.Parameters.Add(new OpenApiParameter
         {
             Name = "X-Role",
             In = ParameterLocation.Header,
-            Description = "Роль користувача: Employee або Admin (опційно, але потрібно для адмін-операцій)",
-            Required = false,
+            Description = "Роль користувача: Employee або Admin (обов'язково)",
+            Required = true,
             Schema = new OpenApiSchema
             {
                 Type = JsonSchemaType.String
