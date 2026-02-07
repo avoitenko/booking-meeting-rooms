@@ -1,6 +1,13 @@
+using BookingMeetingRooms.Domain.Entities;
+using BookingMeetingRooms.Domain.Enums;
 using BookingMeetingRooms.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Configuration.Json;
+using Microsoft.Extensions.DependencyInjection;
+using Npgsql;
 using Serilog;
+using System.Data;
 
 namespace BookingMeetingRooms;
 
@@ -61,6 +68,9 @@ public class MigrationRunner
             Log.Information("PostgreSQL connection: Host={Host}, Port={Port}, Database={Database}",
                 postgreSqlConnection.Host, postgreSqlConnection.Port, postgreSqlConnection.Database);
 
+            // Перевірка та створення бази даних, якщо вона не існує
+            await EnsureDatabaseExistsAsync(postgreSqlConnection);
+
             // Реєстрація DbContext
             services.AddDbContext<AppDbContext>(options =>
                 options.UseNpgsql(connectionString));
@@ -86,6 +96,11 @@ public class MigrationRunner
                 {
                     await dbContext.Database.MigrateAsync();
                     Log.Information("Migrations applied successfully!");
+
+                    // Створення seed даних
+                    await SeedDataAsync(dbContext);
+
+                    Log.Information("Migration process completed successfully!");
                     Console.WriteLine("SUCCESS: Database migrations applied successfully!");
                     return 0;
                 }
@@ -108,6 +123,115 @@ public class MigrationRunner
         finally
         {
             Log.CloseAndFlush();
+        }
+    }
+
+    private static async Task EnsureDatabaseExistsAsync(PostgreSqlConnection postgreSqlConnection)
+    {
+        // Створюємо рядок підключення до системної бази даних (postgres)
+        var masterConnectionString = $"Host={postgreSqlConnection.Host};Port={postgreSqlConnection.Port};Database=postgres;Username={postgreSqlConnection.Username};Password={postgreSqlConnection.Password}";
+
+        try
+        {
+            Log.Information("Checking if database '{Database}' exists...", postgreSqlConnection.Database);
+
+            await using var connection = new NpgsqlConnection(masterConnectionString);
+            await connection.OpenAsync();
+
+            // Перевіряємо, чи існує база даних
+            var checkDbCommand = new NpgsqlCommand(
+                "SELECT 1 FROM pg_database WHERE datname = @databaseName",
+                connection);
+            checkDbCommand.Parameters.AddWithValue("databaseName", postgreSqlConnection.Database);
+
+            var databaseExists = await checkDbCommand.ExecuteScalarAsync() != null;
+
+            if (!databaseExists)
+            {
+                Log.Information("Database '{Database}' does not exist. Creating it...", postgreSqlConnection.Database);
+
+                // Створюємо базу даних
+                // PostgreSQL не підтримує IF NOT EXISTS для CREATE DATABASE, тому перевіряємо вручну
+                var createDbCommand = new NpgsqlCommand(
+                    $"CREATE DATABASE \"{postgreSqlConnection.Database}\"",
+                    connection);
+                await createDbCommand.ExecuteNonQueryAsync();
+
+                Log.Information("Database '{Database}' created successfully!", postgreSqlConnection.Database);
+                Console.WriteLine($"SUCCESS: Database '{postgreSqlConnection.Database}' created successfully!");
+            }
+            else
+            {
+                Log.Information("Database '{Database}' already exists.", postgreSqlConnection.Database);
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Failed to ensure database exists. Exception type: {ExceptionType}, Message: {Message}",
+                ex.GetType().FullName, ex.Message);
+            Console.WriteLine($"ERROR: Failed to create database: {ex.Message}");
+            throw;
+        }
+    }
+
+    private static async Task SeedDataAsync(AppDbContext dbContext)
+    {
+        try
+        {
+            Log.Information("Checking if seed data is needed...");
+
+            // Перевірка та створення користувачів
+            var userCount = await dbContext.Users.CountAsync();
+            if (userCount == 0)
+            {
+                Log.Information("Users table is empty, creating seed data...");
+                var users = new[]
+                {
+                    new User("Адміністратор", "admin@company.com", UserRole.Admin),
+                    new User("Співробітник 1", "employee1@company.com", UserRole.Employee),
+                    new User("Співробітник 2", "employee2@company.com", UserRole.Employee)
+                };
+
+                await dbContext.Users.AddRangeAsync(users);
+                await dbContext.SaveChangesAsync();
+                Log.Information("Seed data: {Count} users created", users.Length);
+                Console.WriteLine($"SUCCESS: Created {users.Length} users");
+            }
+            else
+            {
+                Log.Information("Users table already contains {Count} records, skipping seed", userCount);
+            }
+
+            // Перевірка та створення кімнат
+            var roomCount = await dbContext.Rooms.CountAsync();
+            if (roomCount == 0)
+            {
+                Log.Information("Rooms table is empty, creating seed data...");
+                var rooms = new[]
+                {
+                    new Room("Конференц-зал A", 20, "Поверх 1", true),
+                    new Room("Конференц-зал B", 15, "Поверх 1", true),
+                    new Room("Мала переговорна", 6, "Поверх 2", true),
+                    new Room("Велика переговорна", 30, "Поверх 2", true),
+                    new Room("Кімната для переговорів", 10, "Поверх 3", true)
+                };
+
+                await dbContext.Rooms.AddRangeAsync(rooms);
+                await dbContext.SaveChangesAsync();
+                Log.Information("Seed data: {Count} rooms created", rooms.Length);
+                Console.WriteLine($"SUCCESS: Created {rooms.Length} rooms");
+            }
+            else
+            {
+                Log.Information("Rooms table already contains {Count} records, skipping seed", roomCount);
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Failed to seed data. Exception type: {ExceptionType}, Message: {Message}",
+                ex.GetType().FullName, ex.Message);
+            // Не кидаємо виняток далі, щоб не перервати процес міграції
+            Console.WriteLine($"WARNING: Failed to seed data: {ex.Message}");
         }
     }
 }
