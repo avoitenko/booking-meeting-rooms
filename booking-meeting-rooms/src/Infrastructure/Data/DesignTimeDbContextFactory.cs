@@ -1,7 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
 using Microsoft.Extensions.Configuration;
-using System.Reflection;
 
 namespace BookingMeetingRooms.Infrastructure.Data;
 
@@ -71,15 +70,23 @@ public class DesignTimeDbContextFactory : IDesignTimeDbContextFactory<AppDbConte
             searchDir = parent.FullName;
         }
 
-        // Якщо не знайшли через .csproj, пробуємо через Assembly location
-        var assemblyLocation = Assembly.GetExecutingAssembly().Location;
-        if (!string.IsNullOrEmpty(assemblyLocation))
+        // Якщо не знайшли через .csproj, пробуємо через AppContext.BaseDirectory (працює для single-file приложений)
+        var baseDirectory = AppContext.BaseDirectory;
+        if (!string.IsNullOrEmpty(baseDirectory))
         {
-            var assemblyDir = Path.GetDirectoryName(assemblyLocation);
-            if (!string.IsNullOrEmpty(assemblyDir))
+            // AppContext.BaseDirectory зазвичай вказує на папку з виконуваним файлом (bin/Debug/net10.0/)
+            // Піднімаємося на 4 рівні вгору до корня проекту
+            var potentialRoot = Path.GetFullPath(Path.Combine(baseDirectory, "..", "..", "..", ".."));
+            if (File.Exists(Path.Combine(potentialRoot, "appsettings.json")))
             {
-                // Assembly знаходиться в bin/Debug/net10.0/, піднімаємося на 4 рівні вгору
-                var potentialRoot = Path.GetFullPath(Path.Combine(assemblyDir, "..", "..", "..", ".."));
+                return potentialRoot;
+            }
+            
+            // Також пробуємо піднятися на менше рівнів (на випадок іншої структури)
+            for (int levels = 1; levels <= 5; levels++)
+            {
+                var pathParts = Enumerable.Repeat("..", levels).ToArray();
+                potentialRoot = Path.GetFullPath(Path.Combine(baseDirectory, Path.Combine(pathParts)));
                 if (File.Exists(Path.Combine(potentialRoot, "appsettings.json")))
                 {
                     return potentialRoot;

@@ -14,13 +14,19 @@
   </PropertyGroup>
 
   <!-- Налаштування для публікації одного файлу -->
-  <!-- Для .NET Core/.NET 5+ використовується вбудований PublishSingleFile замість Costura -->
+  <!-- RuntimeIdentifier використовується тільки при публікації (publish), а не при звичайній збірці (build) -->
+  <!-- Costura Fody працює для звичайної збірки (build), PublishSingleFile - тільки для публікації (publish) -->
   <PropertyGroup Condition="'$(Configuration)' == 'Release'">
+    <PublishTrimmed>false</PublishTrimmed>
+  </PropertyGroup>
+  
+  <!-- Налаштування тільки для публікації (publish), не для збірки (build) -->
+  <!-- Використовуємо перевірку на PublishDir, яка встановлюється тільки при publish -->
+  <PropertyGroup Condition="'$(Configuration)' == 'Release' AND '$(PublishDir)' != ''">
     <PublishSingleFile>true</PublishSingleFile>
     <SelfContained>true</SelfContained>
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
     <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
-    <PublishTrimmed>false</PublishTrimmed>
     <!-- Вимкнути Costura при використанні PublishSingleFile, щоб уникнути конфліктів -->
     <DisableFody>true</DisableFody>
   </PropertyGroup>
