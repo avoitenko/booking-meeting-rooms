@@ -217,7 +217,38 @@ Draft → Submitted → Confirmed → Cancelled
 
 ## Приклади API запитів
 
-Детальні приклади використання API з CURL командами дивіться у файлі [CURL_EXAMPLES.md](docs/CURL_EXAMPLES.md).
+### Базові приклади
+
+**Отримати список кімнат:**
+```bash
+curl -H "X-UserId: 1" \
+     -H "X-Role: Admin" \
+     http://localhost:5000/api/rooms
+```
+
+**Створити бронювання (Employee):**
+```bash
+curl -X POST "http://localhost:5000/api/bookings" \
+  -H "Content-Type: application/json" \
+  -H "X-UserId: 2" \
+  -H "X-Role: Employee" \
+  -d '{
+    "roomId": 1,
+    "startAt": "2026-02-10T10:00:00Z",
+    "endAt": "2026-02-10T12:00:00Z",
+    "participantEmails": ["user1@example.com", "user2@example.com"],
+    "description": "Встреча по проекту"
+  }'
+```
+
+**Підтвердити бронювання (Admin):**
+```bash
+curl -X POST "http://localhost:5000/api/bookings/1/confirm" \
+  -H "X-UserId: 1" \
+  -H "X-Role: Admin"
+```
+
+**Детальні приклади:** Повний список прикладів з CURL командами дивіться у файлі [CURL_EXAMPLES.md](docs/CURL_EXAMPLES.md).
 
 ## Конкурентність та конфлікти
 
