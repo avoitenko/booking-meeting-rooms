@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Swashbuckle.AspNetCore.Annotations;
+using System.Data;
 using System.Security.Claims;
 
 namespace BookingMeetingRooms.Api.Controllers;
@@ -301,31 +302,68 @@ public class BookingsController : ControllerBase
                     403));
             }
 
-            // Перевірка конфліктів перед відправкою
-            var hasConflict = await _conflictChecker.HasConflictAsync(bookingRequest, bookingRequest.Id, cancellationToken);
-            if (hasConflict)
+            // Використовуємо транзакцію з рівнем ізоляції Serializable для запобігання race condition
+            await using var transaction = await _context.BeginTransactionAsync(System.Data.IsolationLevel.Serializable, cancellationToken);
+            try
             {
-                return Conflict(new ErrorResponseDto(
-                    "BookingConflict",
-                    "Booking conflict detected. Another booking exists for this room and time slot.",
-                    null,
-                    409));
+                // Перезавантажуємо bookingRequest в межах транзакції для отримання актуального RowVersion
+                bookingRequest = await _context.BookingRequests
+                    .Include(b => b.Room)
+                    .Include(b => b.StatusTransitions)
+                    .FirstOrDefaultAsync(b => b.Id == id, cancellationToken);
+
+                if (bookingRequest == null)
+                {
+                    await transaction.RollbackAsync(cancellationToken);
+                    return NotFound(new ErrorResponseDto(
+                        "BookingNotFound",
+                        $"Booking request with id {id} not found",
+                        null,
+                        404));
+                }
+
+                // Перевірка конфліктів перед відправкою (в межах транзакції)
+                var hasConflict = await _conflictChecker.HasConflictAsync(bookingRequest, bookingRequest.Id, cancellationToken);
+                if (hasConflict)
+                {
+                    await transaction.RollbackAsync(cancellationToken);
+                    return Conflict(new ErrorResponseDto(
+                        "BookingConflict",
+                        "Booking conflict detected. Another booking exists for this room and time slot.",
+                        null,
+                        409));
+                }
+
+                // Отримуємо інформацію про користувача для формування опису операції
+                var user = await _context.Users.FindAsync(new object[] { userId.Value }, cancellationToken);
+                var operationDescription = user != null 
+                    ? $"{user.Name} відправив запит на розгляд"
+                    : $"Користувач (ID: {userId.Value}) відправив запит на розгляд";
+
+                bookingRequest.Submit(operationDescription);
+                await _context.SaveChangesAsync(cancellationToken);
+                await transaction.CommitAsync(cancellationToken);
             }
-
-            // Отримуємо інформацію про користувача для формування опису операції
-            var user = await _context.Users.FindAsync(new object[] { userId.Value }, cancellationToken);
-            var operationDescription = user != null 
-                ? $"{user.Name} відправив запит на розгляд"
-                : $"Користувач (ID: {userId.Value}) відправив запит на розгляд";
-
-            bookingRequest.Submit(operationDescription);
-            await _context.SaveChangesAsync(cancellationToken);
+            catch
+            {
+                await transaction.RollbackAsync(cancellationToken);
+                throw;
+            }
 
             _logger.LogInformation("Booking request submitted: {BookingId} by user {UserId}", bookingRequest.Id, userId);
             _logger.LogInformation("OPERATION: Booking request submitted successfully. BookingId={BookingId}, FromStatus=Draft, ToStatus=Submitted, UserId={UserId}", 
                 bookingRequest.Id, userId.Value);
 
             return Ok(bookingRequest.ToDto());
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            _logger.LogWarning("Concurrency conflict submitting booking {BookingId}", id);
+            return Conflict(new ErrorResponseDto(
+                "ConcurrencyConflict",
+                "Booking was modified by another user. Please refresh and try again.",
+                null,
+                409));
         }
         catch (InvalidOperationException ex)
         {
@@ -395,20 +433,66 @@ public class BookingsController : ControllerBase
                     403));
             }
 
-            // Отримуємо інформацію про користувача для формування опису операції
-            var user = await _context.Users.FindAsync(new object[] { userId.Value }, cancellationToken);
-            var operationDescription = user != null 
-                ? $"{user.Name} скасував бронювання"
-                : $"Користувач (ID: {userId.Value}) скасував бронювання";
+            // Використовуємо транзакцію для атомарності операції
+            await using var transaction = await _context.BeginTransactionAsync(System.Data.IsolationLevel.Serializable, cancellationToken);
+            try
+            {
+                // Перезавантажуємо bookingRequest в межах транзакції
+                bookingRequest = await _context.BookingRequests
+                    .Include(b => b.Room)
+                    .Include(b => b.StatusTransitions)
+                    .FirstOrDefaultAsync(b => b.Id == id, cancellationToken);
 
-            bookingRequest.Cancel(userId.Value, dto.Reason, operationDescription);
-            await _context.SaveChangesAsync(cancellationToken);
+                if (bookingRequest == null)
+                {
+                    await transaction.RollbackAsync(cancellationToken);
+                    return NotFound(new ErrorResponseDto(
+                        "BookingNotFound",
+                        $"Booking request with id {id} not found",
+                        null,
+                        404));
+                }
+
+                if (bookingRequest.CreatedByUserId != userId.Value)
+                {
+                    await transaction.RollbackAsync(cancellationToken);
+                    return StatusCode(403, new ErrorResponseDto(
+                        "Forbidden",
+                        "You can only cancel your own booking requests",
+                        null,
+                        403));
+                }
+
+                // Отримуємо інформацію про користувача для формування опису операції
+                var user = await _context.Users.FindAsync(new object[] { userId.Value }, cancellationToken);
+                var operationDescription = user != null 
+                    ? $"{user.Name} скасував бронювання"
+                    : $"Користувач (ID: {userId.Value}) скасував бронювання";
+
+                bookingRequest.Cancel(userId.Value, dto.Reason, operationDescription);
+                await _context.SaveChangesAsync(cancellationToken);
+                await transaction.CommitAsync(cancellationToken);
+            }
+            catch
+            {
+                await transaction.RollbackAsync(cancellationToken);
+                throw;
+            }
 
             _logger.LogInformation("Booking request cancelled: {BookingId} by user {UserId}", bookingRequest.Id, userId);
             _logger.LogInformation("OPERATION: Booking request cancelled successfully. BookingId={BookingId}, FromStatus=Confirmed, ToStatus=Cancelled, Reason={Reason}, UserId={UserId}", 
                 bookingRequest.Id, dto.Reason, userId.Value);
 
             return Ok(bookingRequest.ToDto());
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            _logger.LogWarning("Concurrency conflict cancelling booking {BookingId}", id);
+            return Conflict(new ErrorResponseDto(
+                "ConcurrencyConflict",
+                "Booking was modified by another user. Please refresh and try again.",
+                null,
+                409));
         }
         catch (InvalidOperationException ex)
         {
@@ -472,25 +556,53 @@ public class BookingsController : ControllerBase
                     404));
             }
 
-            // Перевірка конфліктів перед підтвердженням
-            var hasConflict = await _conflictChecker.HasConflictAsync(bookingRequest, bookingRequest.Id, cancellationToken);
-            if (hasConflict)
+            // Використовуємо транзакцію з рівнем ізоляції Serializable для запобігання race condition
+            await using var transaction = await _context.BeginTransactionAsync(System.Data.IsolationLevel.Serializable, cancellationToken);
+            try
             {
-                return Conflict(new ErrorResponseDto(
-                    "BookingConflict",
-                    "Booking conflict detected. Another confirmed booking exists for this room and time slot.",
-                    null,
-                    409));
+                // Перезавантажуємо bookingRequest в межах транзакції для отримання актуального RowVersion
+                bookingRequest = await _context.BookingRequests
+                    .Include(b => b.Room)
+                    .Include(b => b.StatusTransitions)
+                    .FirstOrDefaultAsync(b => b.Id == id, cancellationToken);
+
+                if (bookingRequest == null)
+                {
+                    await transaction.RollbackAsync(cancellationToken);
+                    return NotFound(new ErrorResponseDto(
+                        "BookingNotFound",
+                        $"Booking request with id {id} not found",
+                        null,
+                        404));
+                }
+
+                // Перевірка конфліктів перед підтвердженням (в межах транзакції)
+                var hasConflict = await _conflictChecker.HasConflictAsync(bookingRequest, bookingRequest.Id, cancellationToken);
+                if (hasConflict)
+                {
+                    await transaction.RollbackAsync(cancellationToken);
+                    return Conflict(new ErrorResponseDto(
+                        "BookingConflict",
+                        "Booking conflict detected. Another confirmed booking exists for this room and time slot.",
+                        null,
+                        409));
+                }
+
+                // Отримуємо інформацію про користувача для формування опису операції
+                var user = await _context.Users.FindAsync(new object[] { userId.Value }, cancellationToken);
+                var operationDescription = user != null 
+                    ? $"{user.Name} підтвердив бронювання"
+                    : $"Адміністратор (ID: {userId.Value}) підтвердив бронювання";
+
+                bookingRequest.Confirm(userId.Value, operationDescription);
+                await _context.SaveChangesAsync(cancellationToken);
+                await transaction.CommitAsync(cancellationToken);
             }
-
-            // Отримуємо інформацію про користувача для формування опису операції
-            var user = await _context.Users.FindAsync(new object[] { userId.Value }, cancellationToken);
-            var operationDescription = user != null 
-                ? $"{user.Name} підтвердив бронювання"
-                : $"Адміністратор (ID: {userId.Value}) підтвердив бронювання";
-
-            bookingRequest.Confirm(userId.Value, operationDescription);
-            await _context.SaveChangesAsync(cancellationToken);
+            catch
+            {
+                await transaction.RollbackAsync(cancellationToken);
+                throw;
+            }
 
             _logger.LogInformation("Booking request confirmed: {BookingId} by admin {UserId}", bookingRequest.Id, userId);
             _logger.LogInformation("OPERATION: Booking request confirmed successfully. BookingId={BookingId}, FromStatus=Submitted, ToStatus=Confirmed, UserId={UserId}", 
@@ -566,20 +678,56 @@ public class BookingsController : ControllerBase
                     404));
             }
 
-            // Отримуємо інформацію про користувача для формування опису операції
-            var user = await _context.Users.FindAsync(new object[] { userId.Value }, cancellationToken);
-            var operationDescription = user != null 
-                ? $"{user.Name} відхилив бронювання"
-                : $"Адміністратор (ID: {userId.Value}) відхилив бронювання";
+            // Використовуємо транзакцію для атомарності операції
+            await using var transaction = await _context.BeginTransactionAsync(System.Data.IsolationLevel.Serializable, cancellationToken);
+            try
+            {
+                // Перезавантажуємо bookingRequest в межах транзакції
+                bookingRequest = await _context.BookingRequests
+                    .Include(b => b.Room)
+                    .Include(b => b.StatusTransitions)
+                    .FirstOrDefaultAsync(b => b.Id == id, cancellationToken);
 
-            bookingRequest.Decline(userId.Value, dto.Reason, operationDescription);
-            await _context.SaveChangesAsync(cancellationToken);
+                if (bookingRequest == null)
+                {
+                    await transaction.RollbackAsync(cancellationToken);
+                    return NotFound(new ErrorResponseDto(
+                        "BookingNotFound",
+                        $"Booking request with id {id} not found",
+                        null,
+                        404));
+                }
+
+                // Отримуємо інформацію про користувача для формування опису операції
+                var user = await _context.Users.FindAsync(new object[] { userId.Value }, cancellationToken);
+                var operationDescription = user != null 
+                    ? $"{user.Name} відхилив бронювання"
+                    : $"Адміністратор (ID: {userId.Value}) відхилив бронювання";
+
+                bookingRequest.Decline(userId.Value, dto.Reason, operationDescription);
+                await _context.SaveChangesAsync(cancellationToken);
+                await transaction.CommitAsync(cancellationToken);
+            }
+            catch
+            {
+                await transaction.RollbackAsync(cancellationToken);
+                throw;
+            }
 
             _logger.LogInformation("Booking request declined: {BookingId} by admin {UserId}", bookingRequest.Id, userId);
             _logger.LogInformation("OPERATION: Booking request declined successfully. BookingId={BookingId}, FromStatus=Submitted, ToStatus=Declined, Reason={Reason}, UserId={UserId}", 
                 bookingRequest.Id, dto.Reason, userId.Value);
 
             return Ok(bookingRequest.ToDto());
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            _logger.LogWarning("Concurrency conflict declining booking {BookingId}", id);
+            return Conflict(new ErrorResponseDto(
+                "ConcurrencyConflict",
+                "Booking was modified by another user. Please refresh and try again.",
+                null,
+                409));
         }
         catch (InvalidOperationException ex)
         {
