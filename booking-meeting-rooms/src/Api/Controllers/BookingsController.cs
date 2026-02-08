@@ -3,6 +3,7 @@ using BookingMeetingRooms.Application.Common.Interfaces;
 using BookingMeetingRooms.Application.Features.Bookings.Dtos;
 using BookingMeetingRooms.Application.Features.Bookings.Mappings;
 using BookingMeetingRooms.Domain.Entities;
+using BookingMeetingRooms.Domain.Enums;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -90,7 +91,11 @@ public class BookingsController : ControllerBase
                 .OrderByDescending(b => b.CreatedAt)
                 .ToListAsync(cancellationToken);
 
-            return Ok(bookings.Select(b => b.ToDto()));
+            var bookingsList = bookings.Select(b => b.ToDto()).ToList();
+            _logger.LogInformation("OPERATION: Booking requests retrieved successfully. Count={Count}, UserId={UserId}", 
+                bookingsList.Count, GetCurrentUserId());
+
+            return Ok(bookingsList);
         }
         catch (Exception ex)
         {
@@ -208,6 +213,8 @@ public class BookingsController : ControllerBase
             }
 
             _logger.LogInformation("Booking request created: {BookingId} by user {UserId}", createdBooking.Id, userId);
+            _logger.LogInformation("OPERATION: Booking request created successfully. BookingId={BookingId}, RoomId={RoomId}, RoomName={RoomName}, StartAt={StartAt}, EndAt={EndAt}, Status={Status}, UserId={UserId}", 
+                createdBooking.Id, createdBooking.RoomId, createdBooking.Room.Name, createdBooking.TimeSlot.StartAt, createdBooking.TimeSlot.EndAt, createdBooking.Status, userId.Value);
 
             return CreatedAtAction(nameof(GetBooking), new { id = createdBooking.Id }, createdBooking.ToDto());
         }
@@ -305,10 +312,18 @@ public class BookingsController : ControllerBase
                     409));
             }
 
-            bookingRequest.Submit();
+            // Отримуємо інформацію про користувача для формування опису операції
+            var user = await _context.Users.FindAsync(new object[] { userId.Value }, cancellationToken);
+            var operationDescription = user != null 
+                ? $"{user.Name} відправив запит на розгляд"
+                : $"Користувач (ID: {userId.Value}) відправив запит на розгляд";
+
+            bookingRequest.Submit(operationDescription);
             await _context.SaveChangesAsync(cancellationToken);
 
             _logger.LogInformation("Booking request submitted: {BookingId} by user {UserId}", bookingRequest.Id, userId);
+            _logger.LogInformation("OPERATION: Booking request submitted successfully. BookingId={BookingId}, FromStatus=Draft, ToStatus=Submitted, UserId={UserId}", 
+                bookingRequest.Id, userId.Value);
 
             return Ok(bookingRequest.ToDto());
         }
@@ -380,10 +395,18 @@ public class BookingsController : ControllerBase
                     403));
             }
 
-            bookingRequest.Cancel(userId.Value, dto.Reason);
+            // Отримуємо інформацію про користувача для формування опису операції
+            var user = await _context.Users.FindAsync(new object[] { userId.Value }, cancellationToken);
+            var operationDescription = user != null 
+                ? $"{user.Name} скасував бронювання"
+                : $"Користувач (ID: {userId.Value}) скасував бронювання";
+
+            bookingRequest.Cancel(userId.Value, dto.Reason, operationDescription);
             await _context.SaveChangesAsync(cancellationToken);
 
             _logger.LogInformation("Booking request cancelled: {BookingId} by user {UserId}", bookingRequest.Id, userId);
+            _logger.LogInformation("OPERATION: Booking request cancelled successfully. BookingId={BookingId}, FromStatus=Confirmed, ToStatus=Cancelled, Reason={Reason}, UserId={UserId}", 
+                bookingRequest.Id, dto.Reason, userId.Value);
 
             return Ok(bookingRequest.ToDto());
         }
@@ -460,10 +483,18 @@ public class BookingsController : ControllerBase
                     409));
             }
 
-            bookingRequest.Confirm(userId.Value);
+            // Отримуємо інформацію про користувача для формування опису операції
+            var user = await _context.Users.FindAsync(new object[] { userId.Value }, cancellationToken);
+            var operationDescription = user != null 
+                ? $"{user.Name} підтвердив бронювання"
+                : $"Адміністратор (ID: {userId.Value}) підтвердив бронювання";
+
+            bookingRequest.Confirm(userId.Value, operationDescription);
             await _context.SaveChangesAsync(cancellationToken);
 
             _logger.LogInformation("Booking request confirmed: {BookingId} by admin {UserId}", bookingRequest.Id, userId);
+            _logger.LogInformation("OPERATION: Booking request confirmed successfully. BookingId={BookingId}, FromStatus=Submitted, ToStatus=Confirmed, UserId={UserId}", 
+                bookingRequest.Id, userId.Value);
 
             return Ok(bookingRequest.ToDto());
         }
@@ -535,10 +566,18 @@ public class BookingsController : ControllerBase
                     404));
             }
 
-            bookingRequest.Decline(userId.Value, dto.Reason);
+            // Отримуємо інформацію про користувача для формування опису операції
+            var user = await _context.Users.FindAsync(new object[] { userId.Value }, cancellationToken);
+            var operationDescription = user != null 
+                ? $"{user.Name} відхилив бронювання"
+                : $"Адміністратор (ID: {userId.Value}) відхилив бронювання";
+
+            bookingRequest.Decline(userId.Value, dto.Reason, operationDescription);
             await _context.SaveChangesAsync(cancellationToken);
 
             _logger.LogInformation("Booking request declined: {BookingId} by admin {UserId}", bookingRequest.Id, userId);
+            _logger.LogInformation("OPERATION: Booking request declined successfully. BookingId={BookingId}, FromStatus=Submitted, ToStatus=Declined, Reason={Reason}, UserId={UserId}", 
+                bookingRequest.Id, dto.Reason, userId.Value);
 
             return Ok(bookingRequest.ToDto());
         }
@@ -567,7 +606,114 @@ public class BookingsController : ControllerBase
         }
     }
 
+    //+------------------------------------------------------------------+
+    /// <summary>
+    /// Видалити бронювання за ID
+    /// </summary>
+    [SwaggerOperation(Summary = "Видалити бронювання за ID", Description = "Admin може видаляти будь-які бронювання. Employee може видаляти тільки свої чернетки (Draft).")]
+    [HttpDelete("{id}")]
+    [Authorize]
+    [SwaggerResponse(200, "Бронювання успішно видалено")]
+    [SwaggerResponse(400, "Неможливо видалити бронювання в поточному статусі")]
+    [SwaggerResponse(401, "Не авторизовано")]
+    [SwaggerResponse(403, "Немає прав доступу")]
+    [SwaggerResponse(404, "Бронювання не знайдено")]
+    [SwaggerResponse(409, "Неможливо видалити через залежності")]
+    public async Task<ActionResult> DeleteBooking(int id, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var userId = GetCurrentUserId();
+            if (!userId.HasValue)
+            {
+                return Unauthorized(new ErrorResponseDto(
+                    "Unauthorized",
+                    "User ID is required",
+                    "Please provide X-UserId header",
+                    401));
+            }
 
+            // Перевіряємо роль користувача
+            var userRole = User.FindFirst(ClaimTypes.Role)?.Value;
+            var isAdmin = string.Equals(userRole, "Admin", StringComparison.OrdinalIgnoreCase);
+
+            var bookingRequest = await _context.BookingRequests
+                .Include(b => b.Room)
+                .Include(b => b.StatusTransitions)
+                .FirstOrDefaultAsync(b => b.Id == id, cancellationToken);
+
+            if (bookingRequest == null)
+            {
+                return NotFound(new ErrorResponseDto(
+                    "BookingNotFound",
+                    $"Booking request with id {id} not found",
+                    null,
+                    404));
+            }
+
+            // Перевірка прав доступу
+            if (!isAdmin)
+            {
+                // Employee може видаляти тільки свої чернетки (Draft)
+                if (bookingRequest.CreatedByUserId != userId.Value)
+                {
+                    _logger.LogWarning(
+                        "User {UserId} attempted to delete booking {BookingId} created by user {CreatedByUserId}",
+                        userId.Value, id, bookingRequest.CreatedByUserId);
+                    return StatusCode(403, new ErrorResponseDto(
+                        "Forbidden",
+                        "You can only delete your own booking requests",
+                        $"Booking was created by user {bookingRequest.CreatedByUserId}, but you are user {userId.Value}",
+                        403));
+                }
+
+                if (bookingRequest.Status != BookingStatus.Draft)
+                {
+                    _logger.LogWarning(
+                        "User {UserId} attempted to delete booking {BookingId} with status {Status}",
+                        userId.Value, id, bookingRequest.Status);
+                    return BadRequest(new ErrorResponseDto(
+                        "InvalidOperation",
+                        "You can only delete draft booking requests",
+                        $"Booking status is {bookingRequest.Status}, but only Draft bookings can be deleted by employees",
+                        400));
+                }
+            }
+
+            // Отримуємо інформацію про користувача для логування
+            var user = await _context.Users.FindAsync(new object[] { userId.Value }, cancellationToken);
+            var userName = user?.Name ?? $"User ID: {userId.Value}";
+
+            var bookingId = bookingRequest.Id;
+            var bookingStatus = bookingRequest.Status;
+            var bookingRoomId = bookingRequest.RoomId;
+
+            _context.BookingRequests.Remove(bookingRequest);
+            await _context.SaveChangesAsync(cancellationToken);
+
+            _logger.LogInformation("Booking request deleted: {BookingId} by {UserName} (ID: {UserId})", 
+                bookingId, userName, userId.Value);
+            _logger.LogInformation("OPERATION: Booking request deleted successfully. BookingId={BookingId}, RoomId={RoomId}, Status={Status}, UserId={UserId}", 
+                bookingId, bookingRoomId, bookingStatus, userId.Value);
+
+            return Ok(new { message = $"Booking request with id {id} has been deleted successfully" });
+        }
+        catch (DbUpdateException ex) when (ex.InnerException?.Message?.Contains("foreign key") == true || 
+                                          ex.InnerException?.Message?.Contains("constraint") == true)
+        {
+            _logger.LogWarning(ex, "Cannot delete booking {BookingId} due to database constraints", id);
+            return Conflict(new ErrorResponseDto(
+                "CannotDeleteBooking",
+                $"Cannot delete booking request with id {id} due to database constraints",
+                ex.InnerException?.Message,
+                409));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error deleting booking {BookingId}", id);
+            return Problem("Failed to delete booking request", statusCode: 500);
+        }
+    }
 
     //+------------------------------------------------------------------+
     private int? GetCurrentUserId()

@@ -55,14 +55,14 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/api/rooms/3",
+              "raw": "{{baseUrl}}/api/rooms/1",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "api",
                 "rooms",
-                "3"
+                "1"
               ]
             },
             "description": "Получить комнату по ID"
@@ -70,7 +70,7 @@
           "response": []
         },
         {
-          "name": "Create Room",
+          "name": "Create Room (Admin)",
           "request": {
             "method": "POST",
             "header": [
@@ -113,7 +113,7 @@
           "response": []
         },
         {
-          "name": "Update Room",
+          "name": "Update Room (Admin)",
           "request": {
             "method": "PUT",
             "header": [
@@ -134,7 +134,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n    \"name\": \"Конференц-зал X\",\n    \"capacity\": 33,\n    \"location\": \"Поверх 3\",\n    \"isActive\": false\n}",
+              "raw": "{\n    // \"name\": \"Конференц-зал X\",\n    // \"capacity\": 33,\n    // \"location\": \"Поверх 3\",\n    \"isActive\": true\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -157,7 +157,7 @@
           "response": []
         },
         {
-          "name": "Delete Room",
+          "name": "Delete Room (Admin)",
           "request": {
             "method": "DELETE",
             "header": [
@@ -173,14 +173,14 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/api/rooms/10",
+              "raw": "{{baseUrl}}/api/rooms/13",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "api",
                 "rooms",
-                "10"
+                "13"
               ]
             },
             "description": "Деактивировать комнату (только для Admin)"
@@ -216,32 +216,6 @@
               "path": [
                 "api",
                 "bookings"
-              ],
-              "query": [
-                {
-                  "key": "from",
-                  "value": "2026-01-01T00:00:00Z",
-                  "description": "Начало периода",
-                  "disabled": true
-                },
-                {
-                  "key": "to",
-                  "value": "2026-12-31T23:59:59Z",
-                  "description": "Конец периода",
-                  "disabled": true
-                },
-                {
-                  "key": "roomId",
-                  "value": "1",
-                  "description": "ID комнаты",
-                  "disabled": true
-                },
-                {
-                  "key": "status",
-                  "value": "2",
-                  "description": "Статус: 0=Draft, 1=Submitted, 2=Confirmed, 3=Declined, 4=Cancelled",
-                  "disabled": true
-                }
               ]
             },
             "description": "Получить список бронирований с фильтрацией"
@@ -255,7 +229,12 @@
             "header": [
               {
                 "key": "X-UserId",
-                "value": "1"
+                "value": "2"
+              },
+              {
+                "key": "X-Role",
+                "value": "Employee",
+                "type": "text"
               }
             ],
             "url": {
@@ -274,6 +253,36 @@
           "response": []
         },
         {
+          "name": "Delete Booking by ID",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "X-UserId",
+                "value": "1"
+              },
+              {
+                "key": "X-Role",
+                "value": "Admin",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/bookings/2",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "bookings",
+                "2"
+              ]
+            },
+            "description": "Получить детали бронирования по ID"
+          },
+          "response": []
+        },
+        {
           "name": "Create Booking",
           "request": {
             "method": "POST",
@@ -284,13 +293,18 @@
               },
               {
                 "key": "X-UserId",
-                "value": "1",
+                "value": "2",
                 "description": "ID пользователя (обязательно)"
+              },
+              {
+                "key": "X-Role",
+                "value": "Employee",
+                "type": "text"
               }
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"roomId\": 1,\n  \"startAt\": \"2026-02-10T10:00:00Z\",\n  \"endAt\": \"2026-02-10T12:00:00Z\",\n  \"participantEmails\": [\n    \"user1@example.com\",\n    \"user2@example.com\"\n  ],\n  \"description\": \"Встреча по проекту\"\n}",
+              "raw": "{\n  \"roomId\": 3,\n  \"startAt\": \"2026-02-10T10:00:00Z\",\n  \"endAt\": \"2026-02-10T12:00:00Z\",\n  \"participantEmails\": [\n    \"user1@example.com\",\n    \"user2@example.com\"\n  ],\n  \"description\": \"Встреча по проекту\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -318,19 +332,24 @@
             "header": [
               {
                 "key": "X-UserId",
-                "value": "1",
+                "value": "2",
                 "description": "ID пользователя, который создал бронирование"
+              },
+              {
+                "key": "X-Role",
+                "value": "Employee",
+                "type": "text"
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/api/bookings/1/submit",
+              "raw": "{{baseUrl}}/api/bookings/2/submit",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "api",
                 "bookings",
-                "1",
+                "2",
                 "submit"
               ]
             },
@@ -339,7 +358,52 @@
           "response": []
         },
         {
-          "name": "Confirm Booking",
+          "name": "Cancel Booking",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-UserId",
+                "value": "2",
+                "description": "ID пользователя, который создал бронирование"
+              },
+              {
+                "key": "X-Role",
+                "value": "Employee",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Встреча отменена\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/bookings/1/cancel",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "bookings",
+                "1",
+                "cancel"
+              ]
+            },
+            "description": "Отменить подтвержденное бронирование (Confirmed → Cancelled)"
+          },
+          "response": []
+        },
+        {
+          "name": "Confirm Booking (Admin)",
           "request": {
             "method": "POST",
             "header": [
@@ -354,14 +418,14 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/api/bookings/1/confirm",
+              "raw": "{{baseUrl}}/api/bookings/2/confirm",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "api",
                 "bookings",
-                "1",
+                "2",
                 "confirm"
               ]
             },
@@ -370,7 +434,7 @@
           "response": []
         },
         {
-          "name": "Decline Booking",
+          "name": "Decline Booking (Admin)",
           "request": {
             "method": "POST",
             "header": [
@@ -410,46 +474,6 @@
               ]
             },
             "description": "Отклонить бронирование (Submitted → Declined) - только для Admin"
-          },
-          "response": []
-        },
-        {
-          "name": "Cancel Booking",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              },
-              {
-                "key": "X-UserId",
-                "value": "1",
-                "description": "ID пользователя, который создал бронирование"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"reason\": \"Встреча отменена\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            },
-            "url": {
-              "raw": "{{baseUrl}}/api/bookings/1/cancel",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "bookings",
-                "1",
-                "cancel"
-              ]
-            },
-            "description": "Отменить подтвержденное бронирование (Confirmed → Cancelled)"
           },
           "response": []
         }

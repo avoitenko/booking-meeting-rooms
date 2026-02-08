@@ -375,7 +375,38 @@ curl -X GET "http://localhost:5000/api/bookings/1" \
 }
 ```
 
-### 7. Пошук бронювань з фільтрацією
+### 7. Видалити бронювання за ID
+
+```bash
+# Admin може видаляти будь-які бронювання
+curl -X DELETE "http://localhost:5000/api/bookings/1" \
+  -H "X-UserId: 1" \
+  -H "X-Role: Admin"
+
+# Employee може видаляти тільки свої чернетки (Draft)
+curl -X DELETE "http://localhost:5000/api/bookings/1" \
+  -H "X-UserId: 2" \
+  -H "X-Role: Employee"
+```
+
+**Відповідь (200 OK):**
+```json
+{
+  "message": "Booking request with id 1 has been deleted successfully"
+}
+```
+
+**Права доступу:**
+- **Admin**: може видаляти будь-які бронювання незалежно від статусу
+- **Employee**: може видаляти тільки свої чернетки (Draft). Спроба видалити чужі або не-Draft бронювання поверне помилку 403 або 400
+
+**Помилки:**
+- `400 Bad Request` - Employee намагається видалити не-Draft бронювання
+- `403 Forbidden` - Employee намагається видалити чужі бронювання
+- `404 Not Found` - Бронювання не знайдено
+- `409 Conflict` - Неможливо видалити через залежності в базі даних
+
+### 8. Пошук бронювань з фільтрацією
 
 ```bash
 # Всі бронювання користувача (Employee бачить тільки свої)

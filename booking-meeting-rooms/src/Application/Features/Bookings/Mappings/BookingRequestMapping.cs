@@ -36,7 +36,7 @@ public static class BookingRequestMapping
             FromStatus = transition.FromStatus,
             ToStatus = transition.ToStatus,
             ChangedByUserId = transition.ChangedByUserId,
-            Reason = transition.Reason,
+            Reason = transition.Reason ?? string.Empty, // Завжди повертаємо рядок, навіть якщо причина не вказана
             CreatedAt = transition.CreatedAt
         };
     }

@@ -58,6 +58,8 @@ public class RoomsController : ControllerBase
             await _context.SaveChangesAsync(cancellationToken);
 
             _logger.LogInformation("Room created: {RoomId} by user {UserId}", room.Id, GetCurrentUserId());
+            _logger.LogInformation("OPERATION: Room created successfully. RoomId={RoomId}, Name={Name}, Capacity={Capacity}, Location={Location}, IsActive={IsActive}, UserId={UserId}", 
+                room.Id, room.Name, room.Capacity, room.Location, room.IsActive, GetCurrentUserId());
 
             return CreatedAtAction(nameof(GetRoom), new { id = room.Id }, room.ToDto());
         }
@@ -108,7 +110,11 @@ public class RoomsController : ControllerBase
                 .ThenBy(r => r.Name)
                 .ToListAsync(cancellationToken);
 
-            return Ok(rooms.Select(r => r.ToDto()));
+            var roomsList = rooms.Select(r => r.ToDto()).ToList();
+            _logger.LogInformation("OPERATION: Rooms retrieved successfully. Count={Count}, UserId={UserId}", 
+                roomsList.Count, GetCurrentUserId());
+
+            return Ok(roomsList);
         }
         catch (Exception ex)
         {
@@ -137,6 +143,9 @@ public class RoomsController : ControllerBase
                     null,
                     404));
             }
+
+            _logger.LogInformation("OPERATION: Room retrieved successfully. RoomId={RoomId}, Name={Name}, UserId={UserId}", 
+                room.Id, room.Name, GetCurrentUserId());
 
             return Ok(room.ToDto());
         }
@@ -181,6 +190,8 @@ public class RoomsController : ControllerBase
             await _context.SaveChangesAsync(cancellationToken);
 
             _logger.LogInformation("Room updated: {RoomId} by user {UserId}", room.Id, GetCurrentUserId());
+            _logger.LogInformation("OPERATION: Room updated successfully. RoomId={RoomId}, Name={Name}, Capacity={Capacity}, Location={Location}, IsActive={IsActive}, UserId={UserId}", 
+                room.Id, room.Name, room.Capacity, room.Location, room.IsActive, GetCurrentUserId());
 
             return Ok(room.ToDto());
         }
@@ -223,10 +234,16 @@ public class RoomsController : ControllerBase
                     404));
             }
 
+            var roomName = room.Name;
+            var roomId = room.Id;
+            var userId = GetCurrentUserId();
+
             _context.Rooms.Remove(room);
             await _context.SaveChangesAsync(cancellationToken);
 
-            _logger.LogInformation("Room deleted: {RoomId} by user {UserId}", room.Id, GetCurrentUserId());
+            _logger.LogInformation("Room deleted: {RoomId} by user {UserId}", roomId, userId);
+            _logger.LogInformation("OPERATION: Room deleted successfully. RoomId={RoomId}, Name={Name}, UserId={UserId}", 
+                roomId, roomName, userId);
 
             return Ok(new { message = $"Room with id {id} has been deleted successfully" });
         }

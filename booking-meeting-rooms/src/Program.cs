@@ -4,6 +4,7 @@ using BookingMeetingRooms.Infrastructure.Data;
 using BookingMeetingRooms.Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
+using System.Text;
 
 namespace BookingMeetingRooms;
 
@@ -21,6 +22,24 @@ public class Program
         // поточна папка додатку
         Environment.CurrentDirectory = AppContext.BaseDirectory;
 
+        // Налаштування кодування консолі для відображення українських символів
+        Console.OutputEncoding = Encoding.UTF8;
+        Console.InputEncoding = Encoding.UTF8;
+        
+        // Для Windows: встановлюємо кодову сторінку UTF-8 (65001)
+        if (OperatingSystem.IsWindows())
+        {
+            try
+            {
+                Console.OutputEncoding = Encoding.UTF8;
+                // Альтернативно можна використати: System.Console.OutputEncoding = new UTF8Encoding(false);
+            }
+            catch
+            {
+                // Якщо не вдалося встановити, продовжуємо роботу
+            }
+        }
+
         try
         {
             var builder = WebApplication.CreateBuilder(args);
@@ -31,12 +50,23 @@ public class Program
             {
                 Log.Logger = new LoggerConfiguration()
                     .ReadFrom.Configuration(builder.Configuration)
+                    .MinimumLevel.Override("Microsoft.AspNetCore.Routing", Serilog.Events.LogEventLevel.Debug)
+                    .MinimumLevel.Override("Microsoft.AspNetCore.Mvc", Serilog.Events.LogEventLevel.Debug)
+                    .MinimumLevel.Override("Microsoft.AspNetCore.Mvc.Controllers", Serilog.Events.LogEventLevel.Debug)
+                    .MinimumLevel.Override("Microsoft.AspNetCore.Hosting.Diagnostics", Serilog.Events.LogEventLevel.Warning)
+                    .MinimumLevel.Override("Microsoft.EntityFrameworkCore.Database.Command", Serilog.Events.LogEventLevel.Debug)
                     .Enrich.FromLogContext()
                     .Enrich.WithThreadId()
-                    .WriteTo.Console()
+                    // Консоль: только Information и выше (скрываем Debug логи), UTF-8 для украинских символов
+                    .WriteTo.Console(
+                        restrictedToMinimumLevel: Serilog.Events.LogEventLevel.Information,
+                        outputTemplate: "{Timestamp:HH:mm:ss} [{Level:u3}] {Message:lj}{NewLine}{Exception}",
+                        formatProvider: System.Globalization.CultureInfo.InvariantCulture)
+                    // Файл: все логи включая Debug (для детального анализа)
                     .WriteTo.File(
                         path: "logs/.log",
                         rollingInterval: RollingInterval.Day,
+                        restrictedToMinimumLevel: Serilog.Events.LogEventLevel.Debug,
                         outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff}\t{ThreadId}\t[{Level:u3}]\t{SourceContext}\t{Message} {NewLine}{Exception}")
                     .CreateLogger();
             }

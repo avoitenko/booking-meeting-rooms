@@ -50,7 +50,7 @@ public class BookingRequest : Entity
         Status = BookingStatus.Draft;
     }
 
-    public void Submit()
+    public void Submit(string? operationDescription = null)
     {
         if (Status != BookingStatus.Draft)
             throw new InvalidOperationException($"Cannot submit booking request in {Status} status");
@@ -67,10 +67,14 @@ public class BookingRequest : Entity
         Status = BookingStatus.Submitted;
         UpdatedAt = DateTime.UtcNow;
 
-        AddStatusTransition(BookingStatus.Draft, BookingStatus.Submitted, CreatedByUserId, null);
+        var reason = !string.IsNullOrWhiteSpace(operationDescription) 
+            ? operationDescription 
+            : "Запит відправлено на розгляд";
+        
+        AddStatusTransition(BookingStatus.Draft, BookingStatus.Submitted, CreatedByUserId, reason);
     }
 
-    public void Confirm(int confirmedByUserId)
+    public void Confirm(int confirmedByUserId, string? operationDescription = null)
     {
         if (Status != BookingStatus.Submitted)
             throw new InvalidOperationException($"Cannot confirm booking request in {Status} status");
@@ -78,34 +82,46 @@ public class BookingRequest : Entity
         Status = BookingStatus.Confirmed;
         UpdatedAt = DateTime.UtcNow;
 
-        AddStatusTransition(BookingStatus.Submitted, BookingStatus.Confirmed, confirmedByUserId, null);
+        var reason = !string.IsNullOrWhiteSpace(operationDescription) 
+            ? operationDescription 
+            : "Бронювання підтверджено";
+        
+        AddStatusTransition(BookingStatus.Submitted, BookingStatus.Confirmed, confirmedByUserId, reason);
     }
 
-    public void Decline(int declinedByUserId, string reason)
+    public void Decline(int declinedByUserId, string userReason, string? operationDescription = null)
     {
         if (Status != BookingStatus.Submitted)
             throw new InvalidOperationException($"Cannot decline booking request in {Status} status");
 
-        if (string.IsNullOrWhiteSpace(reason))
-            throw new ArgumentException("Reason is required for decline", nameof(reason));
+        if (string.IsNullOrWhiteSpace(userReason))
+            throw new ArgumentException("Reason is required for decline", nameof(userReason));
 
         Status = BookingStatus.Declined;
         UpdatedAt = DateTime.UtcNow;
 
+        var reason = !string.IsNullOrWhiteSpace(operationDescription) 
+            ? $"{operationDescription}. Причина: {userReason}" 
+            : $"Бронювання відхилено. Причина: {userReason}";
+        
         AddStatusTransition(BookingStatus.Submitted, BookingStatus.Declined, declinedByUserId, reason);
     }
 
-    public void Cancel(int cancelledByUserId, string reason)
+    public void Cancel(int cancelledByUserId, string userReason, string? operationDescription = null)
     {
         if (Status != BookingStatus.Confirmed)
             throw new InvalidOperationException($"Cannot cancel booking request in {Status} status");
 
-        if (string.IsNullOrWhiteSpace(reason))
-            throw new ArgumentException("Reason is required for cancellation", nameof(reason));
+        if (string.IsNullOrWhiteSpace(userReason))
+            throw new ArgumentException("Reason is required for cancellation", nameof(userReason));
 
         Status = BookingStatus.Cancelled;
         UpdatedAt = DateTime.UtcNow;
 
+        var reason = !string.IsNullOrWhiteSpace(operationDescription) 
+            ? $"{operationDescription}. Причина: {userReason}" 
+            : $"Бронювання скасовано. Причина: {userReason}";
+        
         AddStatusTransition(BookingStatus.Confirmed, BookingStatus.Cancelled, cancelledByUserId, reason);
     }
 

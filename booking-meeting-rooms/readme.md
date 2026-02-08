@@ -195,6 +195,7 @@ curl -H "X-UserId: 1" \
 - `POST /api/bookings/{id}/confirm` - Підтвердити бронювання (Admin, Submitted → Confirmed)
 - `POST /api/bookings/{id}/decline` - Відхилити бронювання (Admin, Submitted → Declined)
 - `POST /api/bookings/{id}/cancel` - Скасувати бронювання (Confirmed → Cancelled, тільки свої для Employee)
+- `DELETE /api/bookings/{id}` - Видалити бронювання (Admin - будь-які, Employee - тільки свої Draft)
 - `GET /api/bookings/{id}` - Отримати деталі бронювання з історією переходів
 - `GET /api/bookings` - Пошук бронювань з фільтрацією (from, to, roomId, status)
 

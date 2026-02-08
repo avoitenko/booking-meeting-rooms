@@ -8,6 +8,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Npgsql;
 using Serilog;
 using System.Data;
+using System.Text;
 
 namespace BookingMeetingRooms;
 
@@ -20,6 +21,23 @@ public class MigrationRunner
 {
     public static async Task<int> RunAsync(string[] args)
     {
+        // Налаштування кодування консолі для відображення українських символів
+        Console.OutputEncoding = Encoding.UTF8;
+        Console.InputEncoding = Encoding.UTF8;
+        
+        // Для Windows: встановлюємо кодову сторінку UTF-8 (65001)
+        if (OperatingSystem.IsWindows())
+        {
+            try
+            {
+                Console.OutputEncoding = Encoding.UTF8;
+            }
+            catch
+            {
+                // Якщо не вдалося встановити, продовжуємо роботу
+            }
+        }
+
         // Перевіряємо аргумент команди
         if (args.Length == 0 || args[0].ToLowerInvariant() != "migrate")
         {
@@ -35,7 +53,9 @@ public class MigrationRunner
 
             // Налаштування логгера
             Log.Logger = new LoggerConfiguration()
-                .WriteTo.Console()
+                .WriteTo.Console(
+                    outputTemplate: "{Timestamp:HH:mm:ss} [{Level:u3}] {Message:lj}{NewLine}{Exception}",
+                    formatProvider: System.Globalization.CultureInfo.InvariantCulture)
                 .WriteTo.File(
                     path: "logs/migration-.log",
                     rollingInterval: RollingInterval.Day,
