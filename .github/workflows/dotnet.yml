@@ -30,7 +30,7 @@ jobs:
       run: dotnet build --no-restore --configuration Release
     
     - name: Publish
-      run: dotnet publish booking-meeting-rooms/booking-meeting-rooms.csproj --no-build --configuration Release --output ./publish -p:SelfContained=false
+      run: dotnet publish booking-meeting-rooms/booking-meeting-rooms.csproj --no-build --configuration Release --output ./publish -p:SelfContained=false -p:RuntimeIdentifier= -p:PublishSingleFile=false
     
     - name: Create zip archive
       shell: pwsh
