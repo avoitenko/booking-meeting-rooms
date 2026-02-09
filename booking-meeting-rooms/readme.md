@@ -217,6 +217,8 @@ Draft → Submitted → Confirmed → Cancelled
 
 ## Приклади API запитів
 
+- [postman_collection.json](postman_collection.json) - Колекція запитів для Postman
+
 ### Базові приклади
 
 **Отримати список кімнат:**

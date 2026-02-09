@@ -8,21 +8,21 @@ on:
     branches: [ "master", "main" ]
   pull_request:
     branches: [ "master", "main" ]
-  workflow_dispatch:  # Дозволяє ручний запуск workflow через кнопку "Run workflow" в GitHub UI
+  workflow_dispatch:
 
 jobs:
   build:
 
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
 
     steps:
     - uses: actions/checkout@v4
     
     - name: Setup .NET
-      uses: actions/setup-dotnet@v4
+      uses: actions/setup-dotnet@v5
       with:
-        # Проект використовує .NET 10.0
         dotnet-version: 10.0.x
+        cache: true
     
     - name: Restore dependencies
       run: dotnet restore
@@ -30,8 +30,19 @@ jobs:
     - name: Build
       run: dotnet build --no-restore --configuration Release
     
-    # Тести виконуються тільки якщо є тестовий проект
-    # Поки що тестів немає, тому крок пропущено
-    # Для додавання тестів: створіть тестовий проект та розкоментуйте наступний крок
-    # - name: Test
-    #   run: dotnet test --no-build --verbosity normal
+    - name: Publish
+      run: dotnet publish --no-build --configuration Release --output ./publish
+    
+    - name: Create zip archive
+      run: |
+        cd publish
+        zip -r ../build-artifact.zip .
+    
+    - name: Upload artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: build-artifact
+        path: build-artifact.zip
+        retention-days: 30
+    
+    
