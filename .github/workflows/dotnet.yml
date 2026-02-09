@@ -30,12 +30,12 @@ jobs:
       run: dotnet build --no-restore --configuration Release
     
     - name: Publish
-      run: dotnet publish --no-build --configuration Release --output ./publish
+      run: dotnet publish booking-meeting-rooms/booking-meeting-rooms.csproj --no-build --configuration Release --output ./publish -p:RuntimeIdentifier=win-x64
     
     - name: Create zip archive
+      shell: pwsh
       run: |
-        cd publish
-        zip -r ../build-artifact.zip .
+        Compress-Archive -Path ./publish/* -DestinationPath ./build-artifact.zip -Force
     
     - name: Upload artifact
       uses: actions/upload-artifact@v4
